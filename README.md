@@ -1,8 +1,4 @@
-# sumi
-
-blair-go calls sumi via HTTP GET requests, sumi then renders the drop image.
-
-Sumi service will run on **port 8888** locally if env isnt set.
+# Sumi
 
 In upcoming versions, sumi would most likely support profile card creation and top.gg/release card banner previews.
 
@@ -27,6 +23,10 @@ Build binary with release flags
 ## Start sumi
 
 Run binary in background with logs
+
+Sumi service will run on **port 8888** locally if env isnt set.
+
+You would need auth key if running sumi on separate machine.
 
 ```powershell
 just start
