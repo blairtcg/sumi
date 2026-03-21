@@ -4,6 +4,8 @@ blair-go calls sumi via HTTP GET requests, sumi then renders the drop image.
 
 Sumi service will run on **port 8888** locally if env isnt set.
 
+In upcoming versions, sumi would most likely support profile card creation and top.gg/release card banner previews.
+
 ## Winslop setup
 
 Download and run rustup-init.exe from <https://rustup.rs/>
