@@ -115,7 +115,7 @@ impl CardCache {
                         image::codecs::webp::WebPDecoder::new(std::io::Cursor::new(data)).ok()?;
                     image::DynamicImage::from_decoder(decoder)
                         .ok()
-                        .map(|img| img.to_rgba8())
+                        .map(|img| img.into_rgba8())
                         .map(Arc::new)
                 })
                 .await
