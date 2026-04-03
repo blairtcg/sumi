@@ -1,5 +1,8 @@
 set shell := ["powershell.exe", "-Command"]
 
+default:
+    @just --list
+
 build:
     cargo build --release
 
@@ -17,3 +20,9 @@ kill:
 
 list:
     tasklist | findstr sumi
+
+lint:
+    cargo clippy --all-targets --all-features
+
+test:
+    cargo test
