@@ -12,7 +12,8 @@ use crate::renderer::error::RenderError;
 // moka uses LFU algorithm so if by rng a card smh keeps getting dropped then it will protect
 // and kick out other less "popular" card that was NATURALLY unlucky to not be chosen by blair.
 // -- Buat lebih konteks per kartu sekitar 200kb, kalau RAM kena cap kita turunin aja
-const MAX_CARDS_IN_MEMORY: u64 = 1_000;
+// -- Tapi kita sini pake Arcimage::RgbaImage yg belum dikompres, sekitar 3 juta byte
+const MAX_CACHE_SIZE_KB: u64 = 1_000_000; // -- 1 GB limit di kilobyte
 
 static CACHE_HITS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 static CACHE_MISSES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -45,7 +46,14 @@ pub struct CardCache {
 impl CardCache {
     /// sets up the cache and finds all images
     pub fn new(cards_directory: String) -> Self {
-        let cache = Cache::builder().max_capacity(MAX_CARDS_IN_MEMORY).build();
+        let cache = Cache::builder()
+            .max_capacity(MAX_CACHE_SIZE_KB)
+            .weigher(|_key: &Arc<str>, value: &Arc<image::RgbaImage>| {
+                // -- Cache di kilobytes biar bisa gampang ganti ke value gede
+                let size_in_bytes = value.as_raw().len();
+                (size_in_bytes / 1024).max(1) as u32
+            })
+            .build();
 
         let file_index = Self::build_card_list(&cards_directory);
         log::info!("found {} card images on disk", file_index.len());
