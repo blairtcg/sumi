@@ -1,5 +1,10 @@
-use std::sync::LazyLock;
+use std::{cell::RefCell, mem, sync::LazyLock};
 
+use bytes::Bytes;
+use image::RgbaImage;
+use itoa;
+
+use super::encoding::encode_webp;
 use crate::renderer::error::RenderError;
 
 const TEXT_SIZE: f32 = 60.0;
@@ -63,7 +68,7 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
 // we recylcle our shit here
 // only one buffer per tokio
 thread_local! {
-    static RENDER_BUFFER: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(Vec::with_capacity(1000 * 800 * 4));
+    static RENDER_BUFFER: RefCell<Vec<u8>> = RefCell::new(Vec::with_capacity(1000 * 800 * 4));
 }
 
 /// here we manually do alpha blending of the fonts to the image pixel buffer.
@@ -71,7 +76,7 @@ thread_local! {
 /// because it is a bitty faster and avoids useless overhead.
 /// we are simply manipulating the byte array for some tiny peformance gain
 #[inline(always)]
-fn draw_text(canvas: &mut image::RgbaImage, text: &[u8], mut x: i32, y: i32) {
+fn draw_text(canvas: &mut RgbaImage, text: &[u8], mut x: i32, y: i32) {
     let canvas_width = canvas.width() as i32;
     let canvas_height = canvas.height() as i32;
     let canvas_buf = canvas.as_mut();
@@ -162,11 +167,11 @@ fn draw_text(canvas: &mut image::RgbaImage, text: &[u8], mut x: i32, y: i32) {
 /// pixel rows from the card images. this is much faster than creating a new
 /// blank image and using a library to paste the card images to it.
 pub fn create_drop_image(
-    left_card_image: &image::RgbaImage,
-    right_card_image: &image::RgbaImage,
+    left_card_image: &RgbaImage,
+    right_card_image: &RgbaImage,
     left_card_print: u32,
     right_card_print: u32,
-) -> Result<bytes::Bytes, RenderError> {
+) -> Result<Bytes, RenderError> {
     // get thread_local bufffer
     RENDER_BUFFER.with(|buf_cell| {
         let mut buffer = buf_cell.borrow_mut();
@@ -226,8 +231,7 @@ pub fn create_drop_image(
         // wrap the buffer into an RgbaImage so we can pass it to the encoder etc
         // we use std::mem::take to move the buffer for a while out of the RefCell
         let mut final_image =
-            image::RgbaImage::from_raw(total_width, total_height, std::mem::take(&mut *buffer))
-                .unwrap();
+            RgbaImage::from_raw(total_width, total_height, mem::take(&mut *buffer)).unwrap();
 
         // format print numbers into string
         // a bit overengineered but we use itoa instead of normal format!()
@@ -253,7 +257,7 @@ pub fn create_drop_image(
         draw_text(&mut final_image, right_text, right_text_x, text_y);
 
         // encode final drop image to webp
-        let result = super::encoding::encode_webp(&final_image);
+        let result = encode_webp(&final_image);
 
         // return buffer to the thread_local storage so it can be reused for next reqs
         *buffer = final_image.into_raw();
