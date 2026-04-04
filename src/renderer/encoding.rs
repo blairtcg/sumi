@@ -1,3 +1,7 @@
+use bytes::Bytes;
+use image::RgbaImage;
+use webpx::{EncoderConfig, Preset, Unstoppable};
+
 use crate::renderer::error::RenderError;
 
 const WEBP_QUALITY: f32 = 80.0;
@@ -14,23 +18,23 @@ const WEBP_SPEED: u8 = 0;
 /// using lossless is also not worth, although encoding takes 100ms instead of our current 350ms
 /// it is uncompressed and our drop image dimension is huge so again file size would be 2 MB - bad.
 #[inline]
-pub fn encode_webp(image: &image::RgbaImage) -> Result<bytes::Bytes, RenderError> {
+pub fn encode_webp(image: &RgbaImage) -> Result<Bytes, RenderError> {
     let (width, height) = image.dimensions();
     let pixel_data = image.as_raw();
 
     // we keep encoding on one thread so we avoid slowing down the server.
     // this is by far the only overhead we have, it'll take ~350ms per img.
     // see all other options at https://crates.io/crates/webpx
-    let settings = webpx::EncoderConfig::new()
-        .preset(webpx::Preset::Default)
+    let settings = EncoderConfig::new()
+        .preset(Preset::Default)
         .quality(WEBP_QUALITY)
         .method(WEBP_SPEED)
         .thread_level(1)
         .segments(1);
 
     let webp_data: Vec<u8> = settings
-        .encode_rgba(pixel_data, width, height, webpx::Unstoppable)
+        .encode_rgba(pixel_data, width, height, Unstoppable)
         .map_err(|error| RenderError::EncodeError(format!("{}", error)))?;
 
-    Ok(bytes::Bytes::from(webp_data))
+    Ok(Bytes::from(webp_data))
 }
