@@ -1,11 +1,19 @@
-use std::{sync::Arc, time::Instant};
+use std::{
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, LazyLock,
+    },
+    time::Instant,
+};
 
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
     response::IntoResponse,
+    Json,
 };
 use serde::Deserialize;
+use serde_json::json;
 
 use crate::renderer::{error::RenderError, CardRenderer};
 
@@ -19,18 +27,17 @@ pub struct RenderRequest {
     pub right_print: Option<u32>,
 }
 
-static REQUEST_STATS: std::sync::LazyLock<RequestStats> =
-    std::sync::LazyLock::new(RequestStats::default);
+static REQUEST_STATS: LazyLock<RequestStats> = LazyLock::new(RequestStats::default);
 
-static START_TIME: std::sync::LazyLock<Instant> = std::sync::LazyLock::new(Instant::now);
+static START_TIME: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 /// simple counter to keep track of how sumi is doing.
 #[derive(Default)]
 struct RequestStats {
-    total_requests: std::sync::atomic::AtomicU64,
-    failed_requests: std::sync::atomic::AtomicU64,
-    total_bytes: std::sync::atomic::AtomicU64,
-    total_time_ns: std::sync::atomic::AtomicU64,
+    total_requests: AtomicU64,
+    failed_requests: AtomicU64,
+    total_bytes: AtomicU64,
+    total_time_ns: AtomicU64,
 }
 
 impl RequestStats {
@@ -38,11 +45,11 @@ impl RequestStats {
     /// this updates our running totals safely across multiple threads.
     #[inline(always)]
     fn record(&self, time_taken_ns: u64, bytes_sent: usize, did_fail: bool) {
-        self.total_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.total_time_ns.fetch_add(time_taken_ns, std::sync::atomic::Ordering::Relaxed);
-        self.total_bytes.fetch_add(bytes_sent as u64, std::sync::atomic::Ordering::Relaxed);
+        self.total_requests.fetch_add(1, Ordering::Relaxed);
+        self.total_time_ns.fetch_add(time_taken_ns, Ordering::Relaxed);
+        self.total_bytes.fetch_add(bytes_sent as u64, Ordering::Relaxed);
         if did_fail {
-            self.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.failed_requests.fetch_add(1, Ordering::Relaxed);
         }
     }
 }
@@ -55,7 +62,7 @@ pub async fn handle_render_drop(
     Query(request): Query<RenderRequest>,
 ) -> impl IntoResponse {
     // start a timer so we know how long this request takes
-    let start = std::time::Instant::now();
+    let start = Instant::now();
     let left_print = request.left_print.unwrap_or(1);
     let right_print = request.right_print.unwrap_or(1);
 
@@ -105,7 +112,7 @@ pub async fn handle_render_drop(
                 log::error!("failed: {}/{} - {}", request.left, request.right, error_msg);
             }
 
-            let json = axum::Json(serde_json::json!({ "error": error_msg }));
+            let json = Json(json!({ "error": error_msg }));
             (status, json).into_response()
         }
     }
@@ -115,10 +122,10 @@ pub async fn handle_render_drop(
 pub async fn handle_metrics() -> impl IntoResponse {
     let (cache_hits, cache_misses, cache_hit_rate) = CardRenderer::cache_stats();
 
-    let total = REQUEST_STATS.total_requests.load(std::sync::atomic::Ordering::Relaxed);
-    let errors = REQUEST_STATS.failed_requests.load(std::sync::atomic::Ordering::Relaxed);
-    let bytes = REQUEST_STATS.total_bytes.load(std::sync::atomic::Ordering::Relaxed);
-    let time_ns = REQUEST_STATS.total_time_ns.load(std::sync::atomic::Ordering::Relaxed);
+    let total = REQUEST_STATS.total_requests.load(Ordering::Relaxed);
+    let errors = REQUEST_STATS.failed_requests.load(Ordering::Relaxed);
+    let bytes = REQUEST_STATS.total_bytes.load(Ordering::Relaxed);
+    let time_ns = REQUEST_STATS.total_time_ns.load(Ordering::Relaxed);
 
     let avg_ms = if total > 0 { (time_ns as f64 / total as f64) / 1_000_000.0 } else { 0.0 };
     let error_rate = if total > 0 { (errors as f64 / total as f64) * 100.0 } else { 0.0 };
@@ -126,7 +133,7 @@ pub async fn handle_metrics() -> impl IntoResponse {
     let uptime = START_TIME.elapsed().as_secs();
     let requests_per_second = if uptime > 0 { total as f64 / uptime as f64 } else { 0.0 };
 
-    let json = axum::Json(serde_json::json!({
+    let json = Json(json!({
         "service": { "name": "sumi", "version": "1.0.0", "uptime_seconds": uptime },
         "cache": { "hits": cache_hits, "misses": cache_misses, "hit_rate_percent": cache_hit_rate },
         "requests": { "total": total, "errors": errors, "error_rate_percent": error_rate, "avg_ms": avg_ms, "bytes": bytes, "rps": requests_per_second }
