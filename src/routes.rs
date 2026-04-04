@@ -27,11 +27,12 @@ pub struct RenderRequest {
     pub right_print: Option<u32>,
 }
 
-static REQUEST_STATS: LazyLock<RequestStats> = LazyLock::new(RequestStats::default);
+static REQUEST_STATS: RequestStats = RequestStats::new();
 
 static START_TIME: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 /// simple counter to keep track of how sumi is doing.
+#[repr(align(64))]
 #[derive(Default)]
 struct RequestStats {
     total_requests: AtomicU64,
@@ -41,6 +42,16 @@ struct RequestStats {
 }
 
 impl RequestStats {
+    // this will allow static inits
+    const fn new() -> Self {
+        Self {
+            total_requests: AtomicU64::new(0),
+            failed_requests: AtomicU64::new(0),
+            total_bytes: AtomicU64::new(0),
+            total_time_ns: AtomicU64::new(0),
+        }
+    }
+
     /// saves details of a single request after it finishes
     /// this updates our running totals safely across multiple threads.
     #[inline(always)]
