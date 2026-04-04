@@ -9,9 +9,8 @@ use std::{
 };
 
 use bytes::Bytes;
-use tokio::{task, time::timeout, try_join};
-
 use error::RenderError;
+use tokio::{task, time::timeout, try_join};
 
 const TIMEOUT_SECONDS: u64 = 5;
 
@@ -28,6 +27,7 @@ impl CardRenderer {
     /// creates the final image.
     /// if an image cant render your drop in 5 seconds, Too bad!
     /// in blair-go side your cooldown wont get used. users can just try dropping again.
+    /// -- Bantuy check lagi...
     pub async fn render_drop(
         &self,
         left_card_name: &str,
