@@ -3,10 +3,15 @@ pub mod encoding;
 pub mod error;
 pub mod image;
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use bytes::Bytes;
+use tokio::{task, time::timeout, try_join};
 
 use error::RenderError;
-use tokio::time::timeout;
 
 const TIMEOUT_SECONDS: u64 = 5;
 
@@ -29,17 +34,17 @@ impl CardRenderer {
         right_card_name: &str,
         left_print_number: u32,
         right_print_number: u32,
-    ) -> Result<bytes::Bytes, RenderError> {
+    ) -> Result<Bytes, RenderError> {
         let render_future = async {
-            let (left_card, right_card) = tokio::try_join!(
+            let (left_card, right_card) = try_join!(
                 self.card_cache.get_card(left_card_name),
                 self.card_cache.get_card(right_card_name)
             )?;
 
-            let queued_at = std::time::Instant::now();
+            let queued_at = Instant::now();
 
             // move the heavy image work to a background thread
-            let result = tokio::task::spawn_blocking(move || {
+            let result = task::spawn_blocking(move || {
                 // kill if too long
                 if queued_at.elapsed() > Duration::from_secs(TIMEOUT_SECONDS) {
                     return Err(RenderError::Timeout);
