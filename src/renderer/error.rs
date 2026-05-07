@@ -1,16 +1,20 @@
-use thiserror::Error;
-
-#[derive(Error, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum RenderError {
-    #[error("card img not found: {0}")]
     CardNotFound(String),
-
-    #[error("render timed out")]
     Timeout,
-
-    #[error("internal error: {0}")]
     Internal(String),
-
-    #[error("encoding error: {0}")]
     EncodeError(String),
 }
+
+impl std::fmt::Display for RenderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CardNotFound(s) => write!(f, "card img not found: {}", s),
+            Self::Timeout => write!(f, "render timed out"),
+            Self::Internal(s) => write!(f, "internal error: {}", s),
+            Self::EncodeError(s) => write!(f, "encoding error: {}", s),
+        }
+    }
+}
+
+impl std::error::Error for RenderError {}
