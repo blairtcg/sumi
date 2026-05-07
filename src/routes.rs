@@ -1,19 +1,11 @@
-use std::{
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc, LazyLock,
-    },
-    time::Instant,
-};
+use std::{sync::Arc, time::Instant};
 
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
     response::IntoResponse,
-    Json,
 };
 use serde::Deserialize;
-use serde_json::json;
 
 use crate::renderer::{error::RenderError, CardRenderer};
 
@@ -25,44 +17,6 @@ pub struct RenderRequest {
     pub right: String,
     pub left_print: Option<u32>,
     pub right_print: Option<u32>,
-}
-
-static REQUEST_STATS: RequestStats = RequestStats::new();
-
-static START_TIME: LazyLock<Instant> = LazyLock::new(Instant::now);
-
-/// simple counter to keep track of how sumi is doing.
-#[repr(align(64))]
-#[derive(Default)]
-struct RequestStats {
-    total_requests: AtomicU64,
-    failed_requests: AtomicU64,
-    total_bytes: AtomicU64,
-    total_time_ns: AtomicU64,
-}
-
-impl RequestStats {
-    // this will allow static inits
-    const fn new() -> Self {
-        Self {
-            total_requests: AtomicU64::new(0),
-            failed_requests: AtomicU64::new(0),
-            total_bytes: AtomicU64::new(0),
-            total_time_ns: AtomicU64::new(0),
-        }
-    }
-
-    /// saves details of a single request after it finishes
-    /// this updates our running totals safely across multiple threads.
-    #[inline(always)]
-    fn record(&self, time_taken_ns: u64, bytes_sent: usize, did_fail: bool) {
-        self.total_requests.fetch_add(1, Ordering::Relaxed);
-        self.total_time_ns.fetch_add(time_taken_ns, Ordering::Relaxed);
-        self.total_bytes.fetch_add(bytes_sent as u64, Ordering::Relaxed);
-        if did_fail {
-            self.failed_requests.fetch_add(1, Ordering::Relaxed);
-        }
-    }
 }
 
 /// this is the main endpoint that handles requests to make our drop image.
@@ -82,30 +36,22 @@ pub async fn handle_render_drop(
             // if the image was created successfully, save the stats and send it back!
             let elapsed = start.elapsed();
             let bytes_sent = image_data.len();
-            REQUEST_STATS.record(elapsed.as_nanos() as u64, bytes_sent, false);
-            log::info!(
-                "rendered: {}/{} ({:.3}ms)",
+            renderer.stats.record(false);
+            log::debug!(
+                "rendered: {}/{} ({:.3}ms) - {} bytes",
                 request.left,
                 request.right,
-                elapsed.as_secs_f64() * 1000.0
+                elapsed.as_secs_f64() * 1000.0,
+                bytes_sent
             );
-            (
-                StatusCode::OK,
-                [
-                    (header::CONTENT_TYPE, "image/webp"),
-                    // -- This is unneeded -- well well well
-                    (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
-                ],
-                image_data,
-            )
-                .into_response()
+            (StatusCode::OK, [(header::CONTENT_TYPE, "image/webp")], image_data).into_response()
         }
         Err(error) => {
             // some things can happen but in theory sumi probably reached max timeout limit
             // on blair-go side we simply hardcode that sumi is busy for any error.
             // players can just retry the drop command again as it wont use up their drop cd.
-            let elapsed = start.elapsed();
-            REQUEST_STATS.record(elapsed.as_nanos() as u64, 0, true);
+            let _elapsed = start.elapsed();
+            renderer.stats.record(true);
 
             let (status, error_msg) = match error {
                 RenderError::CardNotFound(name) => {
@@ -120,34 +66,31 @@ pub async fn handle_render_drop(
             if status == StatusCode::GATEWAY_TIMEOUT {
                 log::warn!("timeout: {}/{}", request.left, request.right);
             } else {
-                log::error!("failed: {}/{} - {}", request.left, request.right, error_msg);
+                log::debug!("failed: {}/{} - {}", request.left, request.right, error_msg);
             }
 
-            let json = Json(json!({ "error": error_msg }));
+            let json = axum::Json(serde_json::json!({ "error": error_msg }));
             (status, json).into_response()
         }
     }
 }
 
 /// an endpoint for sumi stats and whether sumi died or not
-pub async fn handle_metrics() -> impl IntoResponse {
-    let (cache_hits, cache_misses, cache_hit_rate) = CardRenderer::cache_stats();
+pub async fn handle_metrics(State(renderer): State<Arc<CardRenderer>>) -> impl IntoResponse {
+    let (cache_hits, cache_misses, cache_hit_rate) = renderer.card_cache.get_stats();
 
-    let total = REQUEST_STATS.total_requests.load(Ordering::Relaxed);
-    let errors = REQUEST_STATS.failed_requests.load(Ordering::Relaxed);
-    let bytes = REQUEST_STATS.total_bytes.load(Ordering::Relaxed);
-    let time_ns = REQUEST_STATS.total_time_ns.load(Ordering::Relaxed);
+    let total = renderer.stats.total_requests.load(std::sync::atomic::Ordering::Relaxed);
+    let errors = renderer.stats.failed_requests.load(std::sync::atomic::Ordering::Relaxed);
 
-    let avg_ms = if total > 0 { (time_ns as f64 / total as f64) / 1_000_000.0 } else { 0.0 };
     let error_rate = if total > 0 { (errors as f64 / total as f64) * 100.0 } else { 0.0 };
 
-    let uptime = START_TIME.elapsed().as_secs();
-    let requests_per_second = if uptime > 0 { total as f64 / uptime as f64 } else { 0.0 };
+    let uptime = renderer.start_time.elapsed().as_secs();
 
-    let json = Json(json!({
+    // some of the metrics will be removed in next updates as we dont use these anymore except uptime
+    let json = axum::Json(serde_json::json!({
         "service": { "name": "sumi", "version": "1.0.0", "uptime_seconds": uptime },
         "cache": { "hits": cache_hits, "misses": cache_misses, "hit_rate_percent": cache_hit_rate },
-        "requests": { "total": total, "errors": errors, "error_rate_percent": error_rate, "avg_ms": avg_ms, "bytes": bytes, "rps": requests_per_second }
+        "requests": { "total": total, "errors": errors, "error_rate_percent": error_rate }
     }));
 
     (StatusCode::OK, json).into_response()
