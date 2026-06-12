@@ -14,7 +14,7 @@
   serde             = { version = "1.0.217", features = ["derive"] }
   serde_json        = "1.0.150"
   tokio             = { version = "1.52.3", features = ["rt-multi-thread", "sync", "fs", "signal", "macros", "net", "time"] }
-  webpx             = "0.3.4"
+  webpx             = "0.4.0"
 
 [dev-dependencies]
   tempfile = "3"
