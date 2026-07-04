@@ -14,7 +14,7 @@ Download and run rustup-init.exe from <https://rustup.rs/>
 > make sure you install the c/c++ build tools (tick the visual studio build tools checkbox) when setting up rust, as sumi requires a C compiler to build.
 
 > [!NOTE]
-> if you are contributing to sumi, you need the nightly-x86_64-pc-windows-msvc v1.96.0-nightly for cargo +nightly fmt, just is also recommended <kbd>cargo install just</kbd>
+> if you are contributing to sumi, you need the nightly-x86_64-pc-windows-msvc v1.96.0-nightly for cargo +nightly fmt, [just](https://github.com/casey/just) is also recommended <kbd>cargo install just</kbd>
 
 ## Build sumi
 
