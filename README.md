@@ -10,11 +10,11 @@ In upcoming versions, sumi would most likely support profile card creation and t
 
 Download and run rustup-init.exe from <https://rustup.rs/>
 
-You also need the nightly-x86_64-pc-windows-msvc v1.96.0-nightly.
+> [!IMPORTANT]
+> make sure you install the c/c++ build tools (tick the visual studio build tools checkbox) when setting up rust, as sumi requires a C compiler to build.
 
-```powershell
-cargo install just
-```
+> [!NOTE]
+> if you are contributing to sumi, you need the nightly-x86_64-pc-windows-msvc v1.96.0-nightly for cargo +nightly fmt, just is also recommended <kbd>cargo install just</kbd>
 
 ## Build sumi
 
@@ -47,10 +47,6 @@ just kill
 ```powershell
 just list
 ```
-
-<div align="right">
-  <img src="https://files.catbox.moe/d04rv6.webp" alt="Sumi benchmark" width="393">
-</div>
 
 ```mermaid
 ---
