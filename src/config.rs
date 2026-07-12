@@ -7,16 +7,36 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load() -> Self {
+    pub fn from_env() -> Self {
         // read from env so its easier to setup to docker etc.
-        // for now we dont have env set but we will use our default winslop path and default port 8888
-        // quick note to velo, kartu ditemuin di folder huty bukan di folder sumi, folder asset sini
-        // cuman buat font nya saja buat nomor print di kartu drop.
-        let cards_dir = env::var("CARDS_DIR")
-            .map_or_else(|_| PathBuf::from("C:\\Users\\hp\\Documents\\huty\\cards"), PathBuf::from);
+        // you can pass CARDS_DIR env before running
+        // for now we will use our default path and default port 8888
+        let home = env::var_os("USERPROFILE").or_else(|| env::var_os("HOME"));
+        let default_cards_dir = home.map(PathBuf::from).map_or_else(
+            || PathBuf::from("assets/cards"),
+            |p| p.join("Documents").join("kizunari").join("cards"),
+        );
 
-        let port = env::var("PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8888);
+        let cards_dir = env::var("CARDS_DIR").map_or_else(|_| default_cards_dir, PathBuf::from);
+
+        let port = match env::var("PORT") {
+            Ok(s) => s.parse().expect("must be a valid port number"),
+            Err(env::VarError::NotPresent) => 8888,
+            Err(e) => panic!("failed to read port env: {e}"),
+        };
+
+        tracing::info!(
+            "config loaded\n      port: [{}]\n      card: [{}]",
+            port,
+            cards_dir.display()
+        );
 
         Self { port, cards_dir }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::from_env()
     }
 }
