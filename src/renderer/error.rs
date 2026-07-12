@@ -14,10 +14,10 @@ pub enum RenderError {
 impl Display for RenderError {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            Self::CardNotFound(s) => write!(f, "card img not found: {s}"),
+            Self::CardNotFound(s) => write!(f, "card not found {s}"),
             Self::Timeout => write!(f, "render timed out"),
-            Self::Internal(s) => write!(f, "internal error: {s}"),
-            Self::EncodeError(s) => write!(f, "encoding error: {s}"),
+            Self::Internal(s) => write!(f, "{s}"),
+            Self::EncodeError(s) => write!(f, "encoding failed {s}"),
         }
     }
 }
