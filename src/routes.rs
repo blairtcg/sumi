@@ -1,18 +1,18 @@
 use std::{
-    sync::{atomic::Ordering, Arc},
+    sync::{Arc, atomic::Ordering},
     time::Instant,
 };
 
 use axum::{
-    extract::{Query, State},
-    http::{header, StatusCode},
-    response::IntoResponse,
     Json,
+    extract::{Query, State},
+    http::{StatusCode, header},
+    response::IntoResponse,
 };
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::renderer::{error::RenderError, CardRenderer};
+use crate::{error::AppError, renderer::CardRenderer, stats::AppStats};
 
 // the data we expect when blair asks for an image.
 // we need character name from its filename and also print nums
@@ -24,78 +24,79 @@ pub struct RenderRequest {
     pub right_print: Option<u32>,
 }
 
-/// this is the main endpoint that handles requests to make our drop image.
-/// it takes the left and right card details and then ask sumi to combine them,
-/// and returns the drop image back to blair to the player.
+// this is the main endpoint that handles requests to make our drop image.
+// it takes the left and right card details and then ask sumi to combine them,
+// and returns the drop image back to blair to the player.
 pub async fn handle_render_drop(
     State(renderer): State<Arc<CardRenderer>>,
     Query(request): Query<RenderRequest>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, AppError> {
     // start a timer so we know how long this request takes
     let start = Instant::now();
     let left_print = request.left_print.unwrap_or(1);
     let right_print = request.right_print.unwrap_or(1);
 
-    match renderer.render_drop(&request.left, &request.right, left_print, right_print).await {
-        Ok(image_data) => {
-            // if the image was created successfully, save the stats and send it back!
-            let elapsed = start.elapsed();
-            let bytes_sent = image_data.len();
-            renderer.stats.record(false);
-            log::debug!(
-                "rendered: {}/{} ({:.3}ms) - {} bytes",
-                request.left,
-                request.right,
-                elapsed.as_secs_f64() * 1000.0,
-                bytes_sent
-            );
-            (StatusCode::OK, [(header::CONTENT_TYPE, "image/webp")], image_data).into_response()
-        }
-        Err(error) => {
-            // some things can happen but in theory sumi probably reached max timeout limit
-            // on blair-go side we simply hardcode that sumi is busy for any error.
-            // players can just retry the drop command again as it wont use up their drop cd.
-            let _elapsed = start.elapsed();
-            renderer.stats.record(true);
+    tracing::debug!(
+        "starting render..\n      left: {} (#{})\n      right: {} (#{})",
+        request.left,
+        left_print,
+        request.right,
+        right_print
+    );
 
-            let (status, error_msg) = match error {
-                RenderError::CardNotFound(name) => {
-                    (StatusCode::NOT_FOUND, format!("card not found: {name}"))
-                }
-                RenderError::Timeout => {
-                    (StatusCode::GATEWAY_TIMEOUT, "render timed out".to_string())
-                }
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
-            };
-
-            if status == StatusCode::GATEWAY_TIMEOUT {
-                log::warn!("timeout: {}/{}", request.left, request.right);
-            } else {
-                log::debug!("failed: {}/{} - {}", request.left, request.right, error_msg);
+    let image_data =
+        match renderer.render_drop(&request.left, &request.right, left_print, right_print).await {
+            Ok(data) => data,
+            Err(err) => {
+                renderer.stats.record_failure();
+                return Err(AppError::Render { err, left: request.left, right: request.right });
             }
+        };
 
-            let json_resp = Json(json!({ "error": error_msg }));
-            (status, json_resp).into_response()
-        }
-    }
+    // if the image was created successfully, send it back!
+    let elapsed = start.elapsed();
+    let bytes_sent = image_data.len();
+
+    renderer.stats.record_success(bytes_sent as u64, elapsed.as_millis() as u64);
+
+    tracing::debug!(
+        "rendered successfully\n      left: {}\n      right: {}\n      elapsed: {:.3}ms\n      size: {} bytes",
+        request.left,
+        request.right,
+        elapsed.as_secs_f64() * 1000.0,
+        bytes_sent
+    );
+
+    Ok((StatusCode::OK, [(header::CONTENT_TYPE, "image/webp")], image_data).into_response())
 }
 
-/// an endpoint for sumi stats and whether sumi died or not
+// an endpoint for sumi stats and whether sumi died or not
 pub async fn handle_metrics(State(renderer): State<Arc<CardRenderer>>) -> impl IntoResponse {
-    let (cache_hits, cache_misses, cache_hit_rate) = renderer.card_cache.get_stats();
-
-    let total = renderer.stats.total_requests.load(Ordering::Relaxed);
-    let errors = renderer.stats.failed_requests.load(Ordering::Relaxed);
-
-    let error_rate = if total > 0 { (errors as f64 / total as f64) * 100.0 } else { 0.0 };
-
     let uptime = renderer.start_time.elapsed().as_secs();
 
-    // some of the metrics will be removed in next updates as we dont use these anymore except uptime
+    let successful = renderer.stats.successful_renders.load(Ordering::Relaxed);
+    let failed = renderer.stats.failed_renders.load(Ordering::Relaxed);
+    let total_bytes = renderer.stats.total_image_bytes.load(Ordering::Relaxed);
+    let total_time_ms = renderer.stats.total_render_time_ms.load(Ordering::Relaxed);
+
+    let avg_render_time_ms =
+        if successful > 0 { total_time_ms as f64 / successful as f64 } else { 0.0 };
+
+    let avg_file_size_bytes =
+        if successful > 0 { total_bytes as f64 / successful as f64 } else { 0.0 };
+
+    let mem_usage_mb = AppStats::current_memory_usage_mb().await;
+
     let json_resp = Json(json!({
-        "service": { "name": "sumi", "version": "1.1.0", "uptime_seconds": uptime },
-        "cache": { "hits": cache_hits, "misses": cache_misses, "hit_rate_percent": cache_hit_rate },
-        "requests": { "total": total, "errors": errors, "error_rate_percent": error_rate }
+        "service": { "name": "sumi", "version": "1.3.0", "uptime_seconds": uptime },
+        "stats": {
+            "successful_renders": successful,
+            "failed_renders": failed,
+            "total_image_data_sent_bytes": total_bytes,
+            "average_render_time_ms": avg_render_time_ms,
+            "average_file_size_bytes": avg_file_size_bytes,
+            "memory_usage_mb": mem_usage_mb
+        }
     }));
 
     (StatusCode::OK, json_resp).into_response()
