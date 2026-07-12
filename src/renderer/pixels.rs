@@ -26,8 +26,8 @@ impl<T> Size<T> {
     }
 }
 
-/// pixels uncompressed rgba image
-/// this will act as a container that will replace our previous `image::RgbaImage`.
+// pixels uncompressed rgba image
+// this will act as a container that will replace our previous image::RgbaImage
 pub struct RawCardImage {
     pub size: Size<u32>,
     pub pixels: Box<[u8]>,
