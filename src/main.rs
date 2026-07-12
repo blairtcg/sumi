@@ -1,42 +1,84 @@
 mod config;
+mod error;
+mod logger;
 mod renderer;
 mod routes;
+mod stats;
 
-use std::{env, error::Error, net::SocketAddr, sync::Arc};
+use std::{error::Error, net::SocketAddr, panic, sync::Arc};
 
-use axum::{routing::get, serve, Router};
+use axum::{Router, routing::get, serve};
 use mimalloc::MiMalloc;
-use pretty_env_logger::init as init_logger;
 use tokio::{net::TcpListener, signal};
+use tracing_subscriber::{EnvFilter, fmt};
 
 use crate::{
     config::Config,
-    renderer::{print::init_font, CardRenderer},
+    logger::LogFormatter,
+    renderer::{CardRenderer, print::init_font},
     routes::{handle_metrics, handle_render_drop},
 };
 
+// aegis sets up a panic hook so we can format sys errors cleanly
+// as unexpected panics will give long unformatted backtraces.
+fn aegis() {
+    panic::set_hook(Box::new(|info| {
+        let msg = if let Some(s) = info.payload().downcast_ref::<&str>() {
+            s
+        } else if let Some(s) = info.payload().downcast_ref::<String>() {
+            s.as_str()
+        } else {
+            "sumi just crashed ..?"
+        };
+
+        if let Some(loc) = info.location() {
+            tracing::error!(
+                "sumi got sleepy..\n      reason: {}\n      location: {}:{}",
+                msg,
+                loc.file(),
+                loc.line()
+            );
+        } else {
+            tracing::error!("sumi got sleepy..\n      reason: {}", msg);
+        }
+    }));
+}
+
 // we use microsoft mimalloc as it handles memory better
 // it will only help when tokio is running multi threads
+// https://github.com/purpleprotocol/mimalloc_rust
+// https://github.com/microsoft/mimalloc
+// https://www.microsoft.com/en-us/research/wp-content/uploads/2019/06/mimalloc-tr-v1.pdf
 #[global_allocator]
 static ALLOC: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info");
-    }
-    init_logger();
+    aegis();
 
-    let cfg = Config::load();
-    log::info!("!! starting sumi on port {}", cfg.port);
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("sumi=debug,info"));
 
-    log::info!("baking in lexend deca font..");
+    fmt().with_env_filter(filter).event_format(LogFormatter).init();
+
+    let welcomer = include_str!("ascii.txt");
+    let colored_welcomer = welcomer.replace('\n', "\n\x1b[38;2;255;180;162m");
+    println!("\n\x1b[38;2;255;180;162m{colored_welcomer}\x1b[0m");
+
+    let cfg = Config::from_env();
+
+    tracing::info!("baking in lexend deca font..");
     init_font();
 
-    let renderer = CardRenderer::new(cfg.cards_dir.clone()).expect("failed to wake sumi up..");
+    let renderer = match CardRenderer::new(&cfg.cards_dir) {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("failed to wake sumi up..\n      reason: {}", e);
+            return Ok(());
+        }
+    };
     let state = Arc::new(renderer);
 
-    // prewarm cache di belakang
     state.card_cache.start_prewarm();
 
     let app = Router::new()
@@ -48,17 +90,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let addr = SocketAddr::from(([127, 0, 0, 1], cfg.port));
     let listener = TcpListener::bind(addr).await?;
 
-    log::info!("server ready at http://{addr}");
+    serve(listener, app).with_graceful_shutdown(nap()).await?;
 
-    serve(listener, app).with_graceful_shutdown(shutdown()).await?;
-
-    log::info!("sumi is draining tasks, please wait..");
+    tracing::info!("sumi is going to sleep, finishing tasks..");
     state.wait_for_tasks_to_finish().await;
 
     Ok(())
 }
 
-async fn shutdown() {
-    signal::ctrl_c().await.expect("ctrl+c");
-    log::info!("you gave sumi way too much caffeine..");
+async fn nap() {
+    if let Err(e) = signal::ctrl_c().await {
+        tracing::error!("sumi failed to sleep..?({})", e);
+    }
+    tracing::info!("you gave sumi way too much caffeine..");
 }
