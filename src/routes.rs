@@ -24,9 +24,8 @@ pub struct RenderRequest {
     pub right_print: Option<u32>,
 }
 
-// this is the main endpoint that handles requests to make our drop image.
-// it takes the left and right card details and then ask sumi to combine them,
-// and returns the drop image back to blair to the player.
+// takes the left and right card details and then ask sumi to combine them,
+// and returns the drop image back to blair to the player @ discord.
 pub async fn handle_render_drop(
     State(renderer): State<Arc<CardRenderer>>,
     Query(request): Query<RenderRequest>,
