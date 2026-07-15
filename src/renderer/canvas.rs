@@ -53,7 +53,11 @@ pub fn create_drop_image(
     // make sure buffer big enough for image (width * height * 4 bytes per pixel)
     let required_len = (total_width * total_height * 4) as usize;
 
-    let mut buffer = DROP_POOL.lock().unwrap().pop().unwrap_or_default();
+    let mut buffer = DROP_POOL
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .pop()
+        .unwrap_or_default();
     if buffer.len() < required_len {
         buffer.resize(required_len, 0);
     } else {
@@ -132,7 +136,10 @@ pub fn create_drop_image(
         encode_time.as_secs_f64() * 1000.0
     );
 
-    DROP_POOL.lock().unwrap().push(buffer);
+    DROP_POOL
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(buffer);
 
     result
 }
