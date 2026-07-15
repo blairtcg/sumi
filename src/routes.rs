@@ -31,7 +31,6 @@ pub async fn handle_render_drop(
     State(renderer): State<Arc<CardRenderer>>,
     Query(request): Query<RenderRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    // start a timer so we know how long this request takes
     let start = Instant::now();
     let left_print = request.left_print.unwrap_or(1);
     let right_print = request.right_print.unwrap_or(1);
