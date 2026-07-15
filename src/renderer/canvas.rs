@@ -55,7 +55,7 @@ pub fn create_drop_image(
 
     let mut buffer = DROP_POOL
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
         .pop()
         .unwrap_or_default();
     if buffer.len() < required_len {
@@ -136,10 +136,7 @@ pub fn create_drop_image(
         encode_time.as_secs_f64() * 1000.0
     );
 
-    DROP_POOL
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .push(buffer);
+    DROP_POOL.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(buffer);
 
     result
 }
