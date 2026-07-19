@@ -17,7 +17,10 @@ use std::{
 
 use ahash::{HashMap, RandomState};
 use dashmap::DashMap;
-use tokio::{fs as tokio_fs, spawn, sync::Semaphore, task};
+use tokio::{
+    fs as tokio_fs, spawn,
+    task::{self, JoinSet},
+};
 use webpx::Decoder;
 
 use crate::renderer::{
@@ -111,7 +114,7 @@ impl CardCache {
             let warmed_disk_bytes = Arc::new(AtomicU64::new(0));
             let cores = thread::available_parallelism().map_or(8, NonZero::get);
             let concurrent_tasks = cores * 2;
-            let semaphore = Arc::new(Semaphore::new(concurrent_tasks));
+            let mut join_set = JoinSet::new();
 
             for (name, path) in file_index_clone.iter() {
                 // check if we reached 90% cap before spawning more work
@@ -121,10 +124,9 @@ impl CardCache {
                     break;
                 }
 
-                let Ok(permit) = semaphore.clone().acquire_owned().await else {
-                    tracing::error!("failed baking (semaphore closed ?)");
-                    return;
-                };
+                if join_set.len() >= concurrent_tasks {
+                    join_set.join_next().await;
+                }
 
                 let name = name.clone();
                 let path = path.clone();
@@ -133,7 +135,7 @@ impl CardCache {
                 let warmed_kb = warmed_kb.clone();
                 let warmed_disk_bytes = warmed_disk_bytes.clone();
 
-                spawn(async move {
+                join_set.spawn(async move {
                     let Ok(file_bytes) = tokio_fs::read(&path).await else {
                         return;
                     };
@@ -167,16 +169,13 @@ impl CardCache {
                         warmed_kb.fetch_add(size_kb as u64, Ordering::Relaxed);
                         warmed_disk_bytes.fetch_add(file_len, Ordering::Relaxed);
                     }
-
-                    drop(permit);
                 });
             }
 
-            if semaphore.acquire_many(concurrent_tasks as u32).await.is_err() {
-                tracing::error!("failed baking (semaphore closed ?)");
-            }
+            while join_set.join_next().await.is_some() {}
 
             let total_disk_bytes = warmed_disk_bytes.load(Ordering::Relaxed);
+
             let mb = total_disk_bytes as f64 / 1_048_576.0;
 
             tracing::info!(
