@@ -7,11 +7,11 @@ use serde_json::json;
 
 use crate::renderer::error::RenderError;
 
-pub enum AppError {
+pub enum Error {
     Render { err: RenderError, left: String, right: String },
 }
 
-impl IntoResponse for AppError {
+impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let (status, error_msg) = match self {
             Self::Render { err, left, right } => {
