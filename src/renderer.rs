@@ -20,7 +20,7 @@ use error::RenderError;
 use print::init_font;
 use tokio::{sync::Semaphore, task, time::timeout, try_join};
 
-use crate::stats::AppStats;
+use crate::metrics::Metrics;
 
 const TIMEOUT_SECONDS: u64 = 10;
 
@@ -28,7 +28,7 @@ const TIMEOUT_SECONDS: u64 = 10;
 pub struct CardRenderer {
     pub card_cache: CardCache,
     pub start_time: Instant,
-    pub stats: AppStats,
+    pub stats: Metrics,
     cpu_semaphore: Arc<Semaphore>,
     total_permits: usize,
 }
@@ -42,7 +42,7 @@ impl CardRenderer {
         Ok(Self {
             card_cache: CardCache::new(cards_directory.as_ref())?,
             start_time: Instant::now(),
-            stats: AppStats::default(),
+            stats: Metrics::default(),
             cpu_semaphore: Arc::new(Semaphore::new(cores)),
             total_permits: cores,
         })
@@ -62,6 +62,7 @@ impl CardRenderer {
     // creates the final image.
     // if an image cant render your drop in 5 seconds, Too bad!
     // in blair-go side your cooldown wont get used. users can just try dropping again.
+    #[tracing::instrument(skip(self), err)]
     pub async fn render_drop(
         &self,
         left_card_name: &str,
