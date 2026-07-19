@@ -8,11 +8,11 @@ const TEXT_SIZE: f32 = 60.0;
 
 struct Letter {
     coverage: Vec<u8>,
-    width: u32,
-    height: u32,
-    advance_width: i32,
-    offset_x: i32,
-    offset_y: i32,
+    width: u16,
+    height: u16,
+    advance_width: i16,
+    offset_x: i16,
+    offset_y: i16,
 }
 
 struct LetterSet {
@@ -30,15 +30,13 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
 
     let render_char = |c: char| -> Letter {
         let (metrics, coverage) = font.rasterize(c, TEXT_SIZE);
-        let metric_width = metrics.width as u32;
-        let metric_height = metrics.height as u32;
         Letter {
             coverage,
-            width: metric_width,
-            height: metric_height,
-            advance_width: metrics.advance_width.round() as i32,
-            offset_x: metrics.xmin,
-            offset_y: (ascent - metrics.ymin as f32 - metrics.height as f32).round() as i32,
+            width: metrics.width as u16,
+            height: metrics.height as u16,
+            advance_width: metrics.advance_width.round() as i16,
+            offset_x: metrics.xmin as i16,
+            offset_y: (ascent - metrics.ymin as f32 - metrics.height as f32).round() as i16,
         }
     };
 
@@ -71,10 +69,10 @@ pub fn draw_print_number(
             _ => continue,
         };
 
-        let letter_width = letter.width.cast_signed();
-        let letter_height = letter.height.cast_signed();
+        let letter_width = i32::from(letter.width);
+        let letter_height = i32::from(letter.height);
 
-        let draw_y = pos.y + letter.offset_y;
+        let draw_y = pos.y + i32::from(letter.offset_y);
 
         for draw_y_offset in 0..letter_height {
             let canvas_y = draw_y + draw_y_offset;
@@ -83,8 +81,8 @@ pub fn draw_print_number(
                 continue;
             }
 
-            let draw_x_start = 0.max(-(pos.x + letter.offset_x));
-            let draw_x_end = letter_width.min(canvas_width - (pos.x + letter.offset_x));
+            let draw_x_start = 0.max(-(pos.x + i32::from(letter.offset_x)));
+            let draw_x_end = letter_width.min(canvas_width - (pos.x + i32::from(letter.offset_x)));
 
             if draw_x_start >= draw_x_end {
                 continue;
@@ -96,8 +94,8 @@ pub fn draw_print_number(
             let canvas_w = usize::try_from(canvas_width).map_err(|e| {
                 RenderError::Internal(format!("failed to convert canvas width: {e}"))
             })?;
-            let canvas_col_idx =
-                usize::try_from(pos.x + letter.offset_x + draw_x_start).map_err(|e| {
+            let canvas_col_idx = usize::try_from(pos.x + i32::from(letter.offset_x) + draw_x_start)
+                .map_err(|e| {
                     RenderError::Internal(format!("failed to convert canvas column index: {e}"))
                 })?;
             let canvas_pixel_start = (canvas_row_idx * canvas_w + canvas_col_idx) * 4;
@@ -156,7 +154,7 @@ pub fn draw_print_number(
             }
         }
 
-        pos.x += letter.advance_width;
+        pos.x += i32::from(letter.advance_width);
     }
     Ok(())
 }
@@ -170,7 +168,7 @@ pub fn measure_print_number(print_number: &[u8]) -> i32 {
             b'0'..=b'9' => &LETTERS.digits[(b - b'0') as usize],
             _ => continue,
         };
-        width += letter.advance_width;
+        width += i32::from(letter.advance_width);
     }
     width
 }
