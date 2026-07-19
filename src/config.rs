@@ -2,8 +2,8 @@ use std::{env, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub port: u16,
     pub cards_dir: PathBuf,
+    pub port: u16,
 }
 
 impl Config {
@@ -22,7 +22,7 @@ impl Config {
         let port = match env::var("PORT") {
             Ok(s) => s.parse().expect("must be a valid port number"),
             Err(env::VarError::NotPresent) => 8888,
-            Err(e) => panic!("failed to read port env: {e}"),
+            Err(e) => panic!("sumi failed to read port env\n      reason: {e}"),
         };
 
         tracing::info!(
@@ -31,7 +31,7 @@ impl Config {
             cards_dir.display()
         );
 
-        Self { port, cards_dir }
+        Self { cards_dir, port }
     }
 }
 
