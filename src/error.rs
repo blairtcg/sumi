@@ -12,6 +12,8 @@ pub enum Error {
 }
 
 impl IntoResponse for Error {
+    #[cold]
+    #[inline(never)]
     fn into_response(self) -> Response {
         let (status, error_msg) = match self {
             Self::Render { err, left, right } => {
