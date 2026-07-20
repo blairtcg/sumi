@@ -7,7 +7,7 @@ use super::{error::RenderError, pixels::Point};
 const TEXT_SIZE: f32 = 60.0;
 
 struct Letter {
-    coverage: Vec<u8>,
+    coverage: Box<[u8]>,
     width: u16,
     height: u16,
     advance_width: i16,
@@ -31,7 +31,7 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
     let render_char = |c: char| -> Letter {
         let (metrics, coverage) = font.rasterize(c, TEXT_SIZE);
         Letter {
-            coverage,
+            coverage: coverage.into_boxed_slice(),
             width: metrics.width as u16,
             height: metrics.height as u16,
             advance_width: metrics.advance_width.round() as i16,
@@ -118,8 +118,11 @@ pub fn draw_print_number(
                 })?;
 
             for (pixel, &coverage) in target_pixels.chunks_exact_mut(4).zip(letter_row) {
+                let Ok(pixel): Result<&mut [u8; 4], _> = pixel.try_into() else {
+                    continue;
+                };
                 if coverage == 255 {
-                    pixel.copy_from_slice(&[255, 255, 255, 255]);
+                    *pixel = [255, 255, 255, 255];
                 } else if coverage > 0 {
                     let fg_a = u32::from(coverage);
                     let inv_fg_a = 255 - fg_a;
