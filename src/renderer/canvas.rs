@@ -19,6 +19,7 @@ const TEXT_PADDING_FROM_BOTTOM: i32 = 80;
 fn copy_card_pixels(buffer: &mut [u8], card: &RawCardImage, total_width: u32, pos: Point<u32>) {
     let card_row_bytes = (card.size.width * 4) as usize;
     let total_row_bytes = (total_width * 4) as usize;
+    assert!(total_row_bytes >= card_row_bytes, "total row must be larger than card row");
     let start_index = ((pos.y * total_width + pos.x) * 4) as usize;
 
     let dest_rows = buffer[start_index..].chunks_exact_mut(total_row_bytes);
@@ -58,12 +59,8 @@ pub fn create_drop_image(
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .pop()
         .unwrap_or_default();
-    if buffer.len() < required_len {
-        buffer.resize(required_len, 0);
-    } else {
-        // zero out only what we use
-        buffer[..required_len].fill(0);
-    }
+    buffer.clear();
+    buffer.resize(required_len, 0);
 
     // count starting position for the left and right card.
     let left_card_x = PADDING_BETWEEN_CARDS;
