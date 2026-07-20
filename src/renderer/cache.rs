@@ -24,7 +24,7 @@ use tokio::{
 use webpx::Decoder;
 
 use crate::renderer::{
-    error::RenderError,
+    error::{RenderError, Result},
     pixels::{RawCardImage, Size},
 };
 
@@ -46,7 +46,7 @@ impl Debug for CardCache {
 
 impl CardCache {
     // sets up the cache and finds all webp card images
-    pub fn new(cards_directory: impl AsRef<Path>) -> Result<Self, RenderError> {
+    pub fn new(cards_directory: impl AsRef<Path>) -> Result<Self> {
         let file_index = Self::build_card_list(cards_directory.as_ref());
 
         if file_index.is_empty() {
@@ -95,6 +95,7 @@ impl CardCache {
 
         let mut index = HashMap::default();
         find_card(cards_dir, cards_dir, &mut index);
+        index.shrink_to_fit();
         index
     }
 
@@ -188,7 +189,7 @@ impl CardCache {
 
     // gets decoded card image from cache memory map.
     // miss baca dari disk langsung (juga ga dimasukin ke mem map, liat line 4)
-    pub async fn get(&self, name: &str) -> Result<Arc<RawCardImage>, RenderError> {
+    pub async fn get(&self, name: &str) -> Result<Arc<RawCardImage>> {
         if let Some(img) = self.memory.get(name) {
             tracing::trace!("cache hit for {}", name);
             return Ok(img.value().clone());
