@@ -50,8 +50,13 @@ pub fn init_font() {
     LazyLock::force(&LETTERS);
 }
 
-#[inline]
-#[allow(clippy::many_single_char_names)]
+// !!! all as usize casts are safe from sign loss !!!
+// canvas_w and letter_w come from unsigned integers
+// canvas_row_idx is verified positive by the bounds check on line 87
+// canvas_col_idx is non negative because draw_x_start offsets any negative horizontal position
+// letter_row_idx and letter_col_idx are positive offsets bounded by zero
+// count is positive since line 94 check draw_x_end > draw_x_start
+#[allow(clippy::many_single_char_names, clippy::cast_sign_loss)]
 pub fn draw_print_number(
     canvas_width: u32,
     canvas_height: u32,
@@ -61,6 +66,7 @@ pub fn draw_print_number(
 ) -> Result<(), RenderError> {
     let canvas_width = canvas_width.cast_signed();
     let canvas_height = canvas_height.cast_signed();
+    let canvas_w = canvas_width as usize;
 
     for &b in print_number {
         let letter = match b {
@@ -71,6 +77,7 @@ pub fn draw_print_number(
 
         let letter_width = i32::from(letter.width);
         let letter_height = i32::from(letter.height);
+        let letter_w = letter_width as usize;
 
         let draw_y = pos.y + i32::from(letter.offset_y);
 
@@ -88,32 +95,15 @@ pub fn draw_print_number(
                 continue;
             }
 
-            let canvas_row_idx = usize::try_from(canvas_y).map_err(|e| {
-                RenderError::Internal(format!("failed to convert canvas row index: {e}"))
-            })?;
-            let canvas_w = usize::try_from(canvas_width).map_err(|e| {
-                RenderError::Internal(format!("failed to convert canvas width: {e}"))
-            })?;
-            let canvas_col_idx = usize::try_from(pos.x + i32::from(letter.offset_x) + draw_x_start)
-                .map_err(|e| {
-                    RenderError::Internal(format!("failed to convert canvas column index: {e}"))
-                })?;
+            let canvas_row_idx = canvas_y as usize;
+            let canvas_col_idx = (pos.x + i32::from(letter.offset_x) + draw_x_start) as usize;
             let canvas_pixel_start = (canvas_row_idx * canvas_w + canvas_col_idx) * 4;
 
-            let letter_row_idx = usize::try_from(draw_y_offset).map_err(|e| {
-                RenderError::Internal(format!("failed to convert letter row index: {e}"))
-            })?;
-            let letter_w = usize::try_from(letter_width).map_err(|e| {
-                RenderError::Internal(format!("failed to convert letter width: {e}"))
-            })?;
-            let letter_col_idx = usize::try_from(draw_x_start).map_err(|e| {
-                RenderError::Internal(format!("failed to convert letter column index: {e}"))
-            })?;
+            let letter_row_idx = draw_y_offset as usize;
+            let letter_col_idx = draw_x_start as usize;
             let letter_pixel_start = letter_row_idx * letter_w + letter_col_idx;
 
-            let count = usize::try_from(draw_x_end - draw_x_start).map_err(|e| {
-                RenderError::Internal(format!("failed to convert pixel transfer count: {e}"))
-            })?;
+            let count = (draw_x_end - draw_x_start) as usize;
 
             let canvas_pixel_end = canvas_pixel_start + count * 4;
             let letter_pixel_end = letter_pixel_start + count;
@@ -160,6 +150,7 @@ pub fn draw_print_number(
 }
 
 // measures how many padding needed for our print numbers
+#[inline]
 pub fn measure_print_number(print_number: &[u8]) -> i32 {
     let mut width = 0;
     for &b in print_number {
