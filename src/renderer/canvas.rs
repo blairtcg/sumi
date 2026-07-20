@@ -5,7 +5,7 @@ use itoa::Buffer;
 
 use super::{
     encoder::encode_webp,
-    error::RenderError,
+    error::Result,
     pixels::{Point, RawCardImage},
     print::{draw_print_number, measure_print_number},
 };
@@ -34,6 +34,42 @@ fn copy_card_pixels(buffer: &mut [u8], card: &RawCardImage, total_width: u32, po
 
 static DROP_POOL: Mutex<Vec<Vec<u8>>> = Mutex::new(Vec::new());
 
+struct BufferGuard {
+    buffer: Vec<u8>,
+}
+
+impl BufferGuard {
+    #[inline]
+    fn new(mut buffer: Vec<u8>, required_len: usize) -> Self {
+        buffer.clear();
+        buffer.resize(required_len, 0);
+        Self { buffer }
+    }
+}
+
+impl Drop for BufferGuard {
+    #[inline]
+    fn drop(&mut self) {
+        let buf = std::mem::take(&mut self.buffer);
+        DROP_POOL.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(buf);
+    }
+}
+
+impl std::ops::Deref for BufferGuard {
+    type Target = Vec<u8>;
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.buffer
+    }
+}
+
+impl std::ops::DerefMut for BufferGuard {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.buffer
+    }
+}
+
 // combine two card images and add print numbers = drop image
 // we manually copy pixel rows from the card images. this is much faster
 // than creating a new blank image and using a library to paste the card images to it.
@@ -42,7 +78,7 @@ pub fn create_drop_image(
     right_card: &RawCardImage,
     left_card_print: u32,
     right_card_print: u32,
-) -> Result<Bytes, RenderError> {
+) -> Result<Bytes> {
     let start_canvas = Instant::now();
 
     // count the dimensions of our drop image
@@ -56,13 +92,14 @@ pub fn create_drop_image(
     // make sure buffer big enough for image (width * height * 4 bytes per pixel)
     let required_len = (total_width * total_height * 4) as usize;
 
-    let mut buffer = DROP_POOL
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .pop()
-        .unwrap_or_default();
-    buffer.clear();
-    buffer.resize(required_len, 0);
+    let mut buffer = BufferGuard::new(
+        DROP_POOL
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .pop()
+            .unwrap_or_default(),
+        required_len,
+    );
 
     // count starting position for the left and right card.
     let left_card_x = PADDING_BETWEEN_CARDS;
@@ -134,8 +171,6 @@ pub fn create_drop_image(
         print_time.as_secs_f64() * 1000.0,
         encode_time.as_secs_f64() * 1000.0
     );
-
-    DROP_POOL.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(buffer);
 
     result
 }
