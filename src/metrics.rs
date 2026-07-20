@@ -2,10 +2,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Default, Debug)]
 pub struct Metrics {
-    pub successful_renders: AtomicU64,
-    pub failed_renders: AtomicU64,
-    pub total_image_bytes: AtomicU64,
-    pub total_render_time_ms: AtomicU64,
+    successful_renders: AtomicU64,
+    failed_renders: AtomicU64,
+    total_image_bytes: AtomicU64,
+    total_render_time_ms: AtomicU64,
 }
 
 impl Metrics {
@@ -19,5 +19,25 @@ impl Metrics {
     #[inline]
     pub fn record_failure(&self) {
         self.failed_renders.fetch_add(1, Ordering::Relaxed);
+    }
+
+    #[inline]
+    pub fn successful_renders(&self) -> u64 {
+        self.successful_renders.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn failed_renders(&self) -> u64 {
+        self.failed_renders.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn total_image_bytes(&self) -> u64 {
+        self.total_image_bytes.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn total_render_time_ms(&self) -> u64 {
+        self.total_render_time_ms.load(Ordering::Relaxed)
     }
 }
