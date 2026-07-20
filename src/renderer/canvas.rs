@@ -26,7 +26,9 @@ fn copy_card_pixels(buffer: &mut [u8], card: &RawCardImage, total_width: u32, po
     let src_rows = card.pixels.chunks_exact(card_row_bytes);
 
     for (dest_row, src_row) in dest_rows.zip(src_rows).take(card.size.height as usize) {
-        dest_row[..card_row_bytes].copy_from_slice(src_row);
+        if dest_row.len() >= card_row_bytes {
+            dest_row[..card_row_bytes].copy_from_slice(src_row);
+        }
     }
 }
 
