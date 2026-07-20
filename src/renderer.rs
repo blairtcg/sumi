@@ -16,7 +16,7 @@ use std::{
 use bytes::Bytes;
 use cache::CardCache;
 use canvas::create_drop_image;
-use error::RenderError;
+use error::{RenderError, Result};
 use print::init_font;
 use tokio::{sync::Semaphore, task, time::timeout, try_join};
 
@@ -34,7 +34,7 @@ pub struct CardRenderer {
 }
 
 impl CardRenderer {
-    pub fn new(cards_directory: impl AsRef<Path>) -> Result<Self, RenderError> {
+    pub fn new(cards_directory: impl AsRef<Path>) -> Result<Self> {
         let cores = thread::available_parallelism().map_or(4, NonZero::get);
         tracing::info!("sumi woke up with [{cores} cpu cores]");
         init_font();
@@ -69,7 +69,7 @@ impl CardRenderer {
         right_card_name: &str,
         left_print_number: u32,
         right_print_number: u32,
-    ) -> Result<Bytes, RenderError> {
+    ) -> Result<Bytes> {
         let render_future = async {
             let start_fetch = Instant::now();
             let (left_card, right_card) = try_join!(
