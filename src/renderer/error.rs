@@ -12,6 +12,8 @@ pub enum RenderError {
 }
 
 impl Display for RenderError {
+    #[cold]
+    #[inline(never)]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Self::CardNotFound(s) => write!(f, "card not found {s}"),
