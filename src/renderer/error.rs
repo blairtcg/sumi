@@ -4,6 +4,7 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum RenderError {
     CardNotFound(String),
     Timeout,
@@ -25,3 +26,5 @@ impl Display for RenderError {
 }
 
 impl Error for RenderError {}
+
+pub type Result<T> = std::result::Result<T, RenderError>;
