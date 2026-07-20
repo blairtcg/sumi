@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use webpx::{AlphaFilter, EncoderConfig, ImageHint, Preset, Unstoppable};
 
-use crate::renderer::error::RenderError;
+use crate::renderer::error::{RenderError, Result};
 
 const WEBP_QUALITY: f32 = 85.0;
 const WEBP_SPEED: u8 = 0;
@@ -19,7 +19,7 @@ const WEBP_SEGMENTS: u8 = 1;
 /// the point of skipping alpha compression in webpx is also pointless - similar reason
 /// using lossless is also not worth, although encoding takes 100ms instead of our current 350ms
 /// it is uncompressed and our drop image dimension is huge so again file size would be 2 MB - bad.
-pub fn encode_webp(width: u32, height: u32, pixel_data: &[u8]) -> Result<Bytes, RenderError> {
+pub fn encode_webp(width: u32, height: u32, pixel_data: &[u8]) -> Result<Bytes> {
     // we keep encoding on one thread so we avoid slowing down the server.
     // this is by far the only overhead we have, it'll take ~100ms per img.
     // see all other options at https://crates.io/crates/webpx
