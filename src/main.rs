@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Ok(r) => r,
         Err(e) => {
             tracing::error!("failed to wake sumi up..\n      reason: {}", e);
-            return Ok(());
+            return Err(e.into());
         }
     };
     let state = Arc::new(renderer);
