@@ -26,13 +26,12 @@ fn copy_card_pixels(buffer: &mut [u8], card: &RawCardImage, total_width: u32, po
     let src_rows = card.pixels.chunks_exact(card_row_bytes);
 
     for (dest_row, src_row) in dest_rows.zip(src_rows).take(card.size.height as usize) {
-        if dest_row.len() >= card_row_bytes {
-            dest_row[..card_row_bytes].copy_from_slice(src_row);
-        }
+        dest_row[..card_row_bytes].copy_from_slice(src_row);
     }
 }
 
 static DROP_POOL: Mutex<Vec<Vec<u8>>> = Mutex::new(Vec::new());
+const MAX_POOL_BUFFERS: usize = 16;
 
 struct BufferGuard {
     buffer: Vec<u8>,
@@ -50,8 +49,11 @@ impl BufferGuard {
 impl Drop for BufferGuard {
     #[inline]
     fn drop(&mut self) {
-        let buf = std::mem::take(&mut self.buffer);
-        DROP_POOL.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(buf);
+        let mut pool = DROP_POOL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        if pool.len() < MAX_POOL_BUFFERS {
+            let buf = std::mem::take(&mut self.buffer);
+            pool.push(buf);
+        }
     }
 }
 
