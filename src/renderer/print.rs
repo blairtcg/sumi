@@ -125,9 +125,8 @@ pub fn draw_print_number(
             for (pixel, coverage) in
                 target_pixels.chunks_exact_mut(4).zip(letter_row.iter().copied())
             {
-                let Ok(pixel): Result<&mut [u8; 4], _> = pixel.try_into() else {
-                    continue;
-                };
+                // !! chunks_exact_mut(4) guarantees each chunk has exactly 4 elements
+                let pixel: &mut [u8; 4] = pixel.try_into().unwrap();
                 if coverage == 255 {
                     *pixel = [255, 255, 255, 255];
                 } else if coverage > 0 {
@@ -146,9 +145,12 @@ pub fn draw_print_number(
                     let g = u32::from(pixel[1]);
                     let b = u32::from(pixel[2]);
 
-                    pixel[0] = ((255 * fg_a * 255 + r * bg_a * inv_fg_a) / out_a_times_255) as u8;
-                    pixel[1] = ((255 * fg_a * 255 + g * bg_a * inv_fg_a) / out_a_times_255) as u8;
-                    pixel[2] = ((255 * fg_a * 255 + b * bg_a * inv_fg_a) / out_a_times_255) as u8;
+                    let fg_term = 65025 * fg_a;
+                    let bg_term = bg_a * inv_fg_a;
+
+                    pixel[0] = ((fg_term + r * bg_term) / out_a_times_255) as u8;
+                    pixel[1] = ((fg_term + g * bg_term) / out_a_times_255) as u8;
+                    pixel[2] = ((fg_term + b * bg_term) / out_a_times_255) as u8;
                     pixel[3] = out_a as u8;
                 }
             }
