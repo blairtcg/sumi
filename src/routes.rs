@@ -11,7 +11,8 @@ use serde_json::json;
 
 use crate::{
     error::{Error, Result},
-    renderer::CardRenderer,
+    metrics::{ImageBytes, RenderDurationMs},
+    renderer::{CardRenderer, PrintNumber},
 };
 
 // the data we expect when blair asks for an image.
@@ -33,8 +34,8 @@ pub async fn handle_render_drop(
     Query(request): Query<RenderRequest>,
 ) -> Result<impl IntoResponse> {
     let start = Instant::now();
-    let left_print = request.left_print.unwrap_or(1);
-    let right_print = request.right_print.unwrap_or(1);
+    let left_print = PrintNumber(request.left_print.unwrap_or(1));
+    let right_print = PrintNumber(request.right_print.unwrap_or(1));
 
     let image_data =
         match renderer.render_drop(&request.left, &request.right, left_print, right_print).await {
@@ -48,12 +49,16 @@ pub async fn handle_render_drop(
     let elapsed = start.elapsed();
     let bytes_sent = image_data.len();
 
-    renderer.stats.record_success(bytes_sent as u64, elapsed.as_millis() as u64);
+    renderer.stats.record_success(
+        ImageBytes(bytes_sent as u64),
+        RenderDurationMs(elapsed.as_millis() as u64),
+    );
 
     Ok((StatusCode::OK, [(header::CONTENT_TYPE, "image/webp")], image_data).into_response())
 }
 
 // an endpoint for sumi stats and whether sumi died or not
+#[allow(clippy::unused_async)]
 pub async fn handle_metrics(State(renderer): State<Arc<CardRenderer>>) -> impl IntoResponse {
     let uptime = renderer.start_time.elapsed().as_secs();
 
