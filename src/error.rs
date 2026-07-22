@@ -7,7 +7,7 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::renderer::error::RenderError;
+use crate::renderer::RenderError;
 
 #[derive(Debug)]
 #[non_exhaustive]
