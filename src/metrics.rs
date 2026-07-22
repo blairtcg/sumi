@@ -1,5 +1,11 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ImageBytes(pub u64);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RenderDurationMs(pub u64);
+
 #[derive(Default, Debug)]
 pub struct Metrics {
     successful_renders: AtomicU64,
@@ -10,10 +16,10 @@ pub struct Metrics {
 
 impl Metrics {
     #[inline]
-    pub fn record_success(&self, bytes: u64, render_time_ms: u64) {
+    pub fn record_success(&self, bytes: ImageBytes, render_time: RenderDurationMs) {
         self.successful_renders.fetch_add(1, Ordering::Relaxed);
-        self.total_image_bytes.fetch_add(bytes, Ordering::Relaxed);
-        self.total_render_time_ms.fetch_add(render_time_ms, Ordering::Relaxed);
+        self.total_image_bytes.fetch_add(bytes.0, Ordering::Relaxed);
+        self.total_render_time_ms.fetch_add(render_time.0, Ordering::Relaxed);
     }
 
     #[inline]
