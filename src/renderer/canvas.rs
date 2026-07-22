@@ -4,6 +4,7 @@ use bytes::Bytes;
 use itoa::Buffer;
 
 use super::{
+    PrintNumber,
     encoder::encode_webp,
     error::Result,
     pixels::{Point, RawCardImage},
@@ -28,6 +29,16 @@ fn copy_card_pixels(buffer: &mut [u8], card: &RawCardImage, total_width: u32, po
     for (dest_row, src_row) in dest_rows.zip(src_rows).take(card.size.height as usize) {
         dest_row[..card_row_bytes].copy_from_slice(src_row);
     }
+}
+
+#[inline]
+fn format_print_number(print_num: u32, buf: &mut [u8; 32]) -> &[u8] {
+    buf[0] = b'#';
+    let mut itoa = Buffer::new();
+    let s = itoa.format(print_num);
+    let len = 1 + s.len();
+    buf[1..len].copy_from_slice(s.as_bytes());
+    &buf[..len]
 }
 
 static DROP_POOL: Mutex<Vec<Vec<u8>>> = Mutex::new(Vec::new());
@@ -75,11 +86,11 @@ impl std::ops::DerefMut for BufferGuard {
 // combine two card images and add print numbers = drop image
 // we manually copy pixel rows from the card images. this is much faster
 // than creating a new blank image and using a library to paste the card images to it.
-pub fn create_drop_image(
+pub(super) fn create_drop_image(
     left_card: &RawCardImage,
     right_card: &RawCardImage,
-    left_card_print: u32,
-    right_card_print: u32,
+    left_card_print: PrintNumber,
+    right_card_print: PrintNumber,
 ) -> Result<Bytes> {
     let start_canvas = Instant::now();
 
@@ -112,21 +123,11 @@ pub fn create_drop_image(
     copy_card_pixels(&mut buffer, left_card, total_width, Point::new(left_card_x, card_y));
     copy_card_pixels(&mut buffer, right_card, total_width, Point::new(right_card_x, card_y));
 
-    #[inline]
-    fn format_print_number(print_num: u32, buf: &mut [u8; 32]) -> &[u8] {
-        buf[0] = b'#';
-        let mut itoa = Buffer::new();
-        let s = itoa.format(print_num);
-        let len = 1 + s.len();
-        buf[1..len].copy_from_slice(s.as_bytes());
-        &buf[..len]
-    }
-
     let mut left_print_buf = [0u8; 32];
-    let left_print = format_print_number(left_card_print, &mut left_print_buf);
+    let left_print = format_print_number(left_card_print.0, &mut left_print_buf);
 
     let mut right_print_buf = [0u8; 32];
-    let right_print = format_print_number(right_card_print, &mut right_print_buf);
+    let right_print = format_print_number(right_card_print.0, &mut right_print_buf);
 
     let canvas_time = start_canvas.elapsed();
     let start_print = Instant::now();
