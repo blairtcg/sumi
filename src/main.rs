@@ -1,17 +1,18 @@
-use std::{error::Error, future::pending, net::SocketAddr, panic, sync::Arc, time::Duration};
+use std::{future::pending, net::SocketAddr, panic, sync::Arc, time::Duration};
 
-use axum::{Router, routing::get, serve};
+use axum::{routing::get, Router, serve};
 use mimalloc::MiMalloc;
+#[cfg(unix)]
+use tokio::signal::unix::{signal as unix_signal, SignalKind};
+use tokio::{net::TcpListener, signal, time::timeout};
+use tracing_subscriber::{fmt, EnvFilter};
+
 use sumi::{
     config::Config,
     logger::LogFormatter,
     renderer::CardRenderer,
     routes::{handle_metrics, handle_render_drop},
 };
-#[cfg(unix)]
-use tokio::signal::unix::{SignalKind, signal as unix_signal};
-use tokio::{net::TcpListener, signal, time::timeout};
-use tracing_subscriber::{EnvFilter, fmt};
 
 // aegis sets up a panic hook so we can format sys errors cleanly
 // as unexpected panics will give long unformatted backtraces.
@@ -47,7 +48,7 @@ fn aegis() {
 static ALLOC: MiMalloc = MiMalloc;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() {
     const COLOR_SUMI: &str = "\x1b[38;2;255;180;162m";
     const RESET: &str = "\x1b[0m";
 
@@ -70,7 +71,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Ok(r) => r,
         Err(e) => {
             tracing::error!("failed to wake sumi up..\n      reason: {}", e);
-            return Err(e.into());
+            std::process::exit(1);
         }
     };
     let state = Arc::new(renderer);
@@ -84,9 +85,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .with_state(state.clone());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], cfg.port));
-    let listener = TcpListener::bind(addr).await?;
+    let listener = match TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            tracing::error!("sumi failed to bind to port..\n      reason: {}", e);
+            std::process::exit(1);
+        }
+    };
 
-    serve(listener, app).with_graceful_shutdown(nap()).await?;
+    if let Err(e) = serve(listener, app).with_graceful_shutdown(nap()).await {
+        tracing::error!("sumi's server crashed..\n      reason: {}", e);
+        std::process::exit(1);
+    }
 
     tracing::info!("sumi is going to sleep, finishing tasks..");
     if timeout(Duration::from_secs(10), state.wait_for_tasks_to_finish()).await.is_ok() {
@@ -94,8 +104,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     } else {
         tracing::error!("sumi refused to sleep in time.. pulling the blanket anyway!");
     }
-
-    Ok(())
 }
 
 // https://github.com/tokio-rs/axum/blob/main/examples/graceful-shutdown/src/main.rs
