@@ -20,16 +20,22 @@ impl Config {
         let cards_dir = env::var("CARDS_DIR").map_or_else(|_| default_cards_dir, PathBuf::from);
 
         let port = match env::var("PORT") {
-            Ok(s) => match s.parse() {
-                Ok(p) => p,
-                Err(_) => {
-                    tracing::error!("failed to load config..\n      reason: PORT is not a valid u16 port number");
+            Ok(s) => {
+                if let Ok(p) = s.parse() {
+                    p
+                } else {
+                    tracing::error!(
+                        "failed to load config..\n      reason: PORT is not a valid u16 port number"
+                    );
                     std::process::exit(1);
                 }
-            },
+            }
             Err(env::VarError::NotPresent) => 8888,
             Err(e) => {
-                tracing::error!("failed to load config..\n      reason: failed to read PORT env ({})", e);
+                tracing::error!(
+                    "failed to load config..\n      reason: failed to read PORT env ({})",
+                    e
+                );
                 std::process::exit(1);
             }
         };
