@@ -1,25 +1,17 @@
-mod config;
-mod error;
-mod logger;
-mod metrics;
-mod renderer;
-mod routes;
-
 use std::{error::Error, future::pending, net::SocketAddr, panic, sync::Arc, time::Duration};
 
 use axum::{Router, routing::get, serve};
 use mimalloc::MiMalloc;
+use sumi::{
+    config::Config,
+    logger::LogFormatter,
+    renderer::CardRenderer,
+    routes::{handle_metrics, handle_render_drop},
+};
 #[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal as unix_signal};
 use tokio::{net::TcpListener, signal, time::timeout};
 use tracing_subscriber::{EnvFilter, fmt};
-
-use crate::{
-    config::Config,
-    logger::LogFormatter,
-    renderer::{CardRenderer, print::init_font},
-    routes::{handle_metrics, handle_render_drop},
-};
 
 // aegis sets up a panic hook so we can format sys errors cleanly
 // as unexpected panics will give long unformatted backtraces.
@@ -73,9 +65,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let cfg = Config::from_env();
-
-    tracing::info!("baking in lexend deca font..");
-    init_font();
 
     let renderer = match CardRenderer::new(&cfg.cards_dir) {
         Ok(r) => r,
