@@ -46,7 +46,7 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
     }
 });
 
-pub fn init_font() {
+pub(super) fn init_font() {
     LazyLock::force(&LETTERS);
 }
 
@@ -57,7 +57,7 @@ pub fn init_font() {
 // letter_row_idx and letter_col_idx are positive offsets bounded by zero
 // count is positive since line 94 check draw_x_end > draw_x_start
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
-pub fn draw_print_number(
+pub(super) fn draw_print_number(
     canvas_width: u32,
     canvas_height: u32,
     canvas_buf: &mut [u8],
@@ -163,7 +163,7 @@ pub fn draw_print_number(
 
 // measures how many padding needed for our print numbers
 #[inline]
-pub fn measure_print_number(print_number: &[u8]) -> i32 {
+pub(super) fn measure_print_number(print_number: &[u8]) -> i32 {
     print_number
         .iter()
         .copied()
