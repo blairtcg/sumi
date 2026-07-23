@@ -52,17 +52,41 @@ pub(super) fn init_font() {
 
 // !!! all as usize casts are safe from sign loss !!!
 // canvas_w and letter_w come from unsigned integers
-// canvas_row_idx is verified positive by the bounds check on line 87
-// canvas_col_idx is non negative because draw_x_start offsets any negative horizontal position
+// canvas_row_idx is verified positive by the bounds check
 // letter_row_idx and letter_col_idx are positive offsets bounded by zero
-// count is positive since line 94 check draw_x_end > draw_x_start
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
 pub(super) fn draw_print_number(
     canvas_width: u32,
     canvas_height: u32,
     canvas_buf: &mut [u8],
     print_number: &[u8],
+    pos: Point<i32>,
+) -> Result<(), RenderError> {
+    // put shadow 1px for visibility issues when bg too bright
+    let shadow_color = [0u8, 0u8, 0u8, 160u8];
+    draw_glyphs(
+        canvas_width,
+        canvas_height,
+        canvas_buf,
+        print_number,
+        Point::new(pos.x + 1, pos.y + 1),
+        shadow_color,
+    )?;
+
+    let white_color = [255u8, 255u8, 255u8, 255u8];
+    draw_glyphs(canvas_width, canvas_height, canvas_buf, print_number, pos, white_color)?;
+
+    Ok(())
+}
+
+#[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
+fn draw_glyphs(
+    canvas_width: u32,
+    canvas_height: u32,
+    canvas_buf: &mut [u8],
+    print_number: &[u8],
     mut pos: Point<i32>,
+    color: [u8; 4],
 ) -> Result<(), RenderError> {
     let canvas_width = canvas_width.cast_signed();
     let canvas_height = canvas_height.cast_signed();
@@ -125,12 +149,32 @@ pub(super) fn draw_print_number(
             for (pixel, coverage) in
                 target_pixels.chunks_exact_mut(4).zip(letter_row.iter().copied())
             {
-                // !! chunks_exact_mut(4) guarantees each chunk has exactly 4 elements
-                let pixel: &mut [u8; 4] = pixel.try_into().unwrap();
                 if coverage == 255 {
-                    *pixel = [255, 255, 255, 255];
+                    if color[3] == 255 {
+                        pixel[0] = color[0];
+                        pixel[1] = color[1];
+                        pixel[2] = color[2];
+                        pixel[3] = 255;
+                    } else {
+                        let fg_a = u32::from(color[3]);
+                        let inv_fg_a = 255 - fg_a;
+                        let bg_a = u32::from(pixel[3]);
+                        let out_a = (fg_a * 255 + bg_a * inv_fg_a) / 255;
+                        if out_a > 0 {
+                            let r = u32::from(pixel[0]);
+                            let g = u32::from(pixel[1]);
+                            let b = u32::from(pixel[2]);
+                            pixel[0] = ((u32::from(color[0]) * fg_a + r * inv_fg_a) / 255) as u8;
+                            pixel[1] = ((u32::from(color[1]) * fg_a + g * inv_fg_a) / 255) as u8;
+                            pixel[2] = ((u32::from(color[2]) * fg_a + b * inv_fg_a) / 255) as u8;
+                            pixel[3] = out_a as u8;
+                        }
+                    }
                 } else if coverage > 0 {
-                    let fg_a = u32::from(coverage);
+                    let fg_a = (u32::from(coverage) * u32::from(color[3])) / 255;
+                    if fg_a == 0 {
+                        continue;
+                    }
                     let inv_fg_a = 255 - fg_a;
                     let bg_a = u32::from(pixel[3]);
 
@@ -145,12 +189,18 @@ pub(super) fn draw_print_number(
                     let g = u32::from(pixel[1]);
                     let b = u32::from(pixel[2]);
 
-                    let fg_term = 65025 * fg_a;
+                    let fg_r = u32::from(color[0]);
+                    let fg_g = u32::from(color[1]);
+                    let fg_b = u32::from(color[2]);
+
+                    let fg_term_r = fg_r * 255 * fg_a;
+                    let fg_term_g = fg_g * 255 * fg_a;
+                    let fg_term_b = fg_b * 255 * fg_a;
                     let bg_term = bg_a * inv_fg_a;
 
-                    pixel[0] = ((fg_term + r * bg_term) / out_a_times_255) as u8;
-                    pixel[1] = ((fg_term + g * bg_term) / out_a_times_255) as u8;
-                    pixel[2] = ((fg_term + b * bg_term) / out_a_times_255) as u8;
+                    pixel[0] = ((fg_term_r + r * bg_term) / out_a_times_255) as u8;
+                    pixel[1] = ((fg_term_g + g * bg_term) / out_a_times_255) as u8;
+                    pixel[2] = ((fg_term_b + b * bg_term) / out_a_times_255) as u8;
                     pixel[3] = out_a as u8;
                 }
             }
