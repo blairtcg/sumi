@@ -127,10 +127,10 @@ pub(super) fn create_drop_image(
     copy_card_pixels(&mut buffer, right_card, total_width, Point::new(right_card_x, card_y));
 
     let mut left_print_buf = [0u8; 8];
-    let left_print = format_print_number(left_card_print.0, &mut left_print_buf);
+    let left_print = format_print_number(left_card_print.value(), &mut left_print_buf);
 
     let mut right_print_buf = [0u8; 8];
-    let right_print = format_print_number(right_card_print.0, &mut right_print_buf);
+    let right_print = format_print_number(right_card_print.value(), &mut right_print_buf);
 
     let canvas_time = start_canvas.elapsed();
     let start_print = Instant::now();
