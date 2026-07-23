@@ -26,7 +26,6 @@ pub struct RenderRequest {
 }
 
 // takes the left and right card details and then ask sumi to combine them,
-// this is the main endpoint that handles requests to make our drop image.
 // and returns the drop image back to blair to the player @ discord.
 #[tracing::instrument(skip(renderer), fields(left = %request.left, right = %request.right, left_print = request.left_print.unwrap_or(1), right_print = request.right_print.unwrap_or(1)))]
 pub async fn handle_render_drop(
@@ -48,9 +47,9 @@ pub async fn handle_render_drop(
 
     let elapsed = start.elapsed();
     let bytes_sent = image_data.len();
-    let image_bytes = u64::from(bytes_sent);
+    let image_bytes = u64::try_from(bytes_sent).unwrap_or(u64::MAX);
     let render_ms = u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX);
- 
+
     renderer.stats.record_success(ImageBytes(image_bytes), RenderDurationMs(render_ms));
 
     Ok((StatusCode::OK, [(header::CONTENT_TYPE, "image/webp")], image_data).into_response())
