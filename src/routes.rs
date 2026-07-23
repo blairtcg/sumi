@@ -48,11 +48,10 @@ pub async fn handle_render_drop(
 
     let elapsed = start.elapsed();
     let bytes_sent = image_data.len();
-
-    renderer.stats.record_success(
-        ImageBytes(bytes_sent as u64),
-        RenderDurationMs(elapsed.as_millis() as u64),
-    );
+    let image_bytes = u64::from(bytes_sent);
+    let render_ms = u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX);
+ 
+    renderer.stats.record_success(ImageBytes(image_bytes), RenderDurationMs(render_ms));
 
     Ok((StatusCode::OK, [(header::CONTENT_TYPE, "image/webp")], image_data).into_response())
 }
