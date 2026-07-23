@@ -25,12 +25,17 @@ use crate::metrics::Metrics;
 const TIMEOUT_SECONDS: u64 = 10;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PrintNumber(pub u16);
+pub struct PrintNumber(u16);
 
 impl PrintNumber {
     #[inline]
     pub fn new(val: u32) -> Self {
         Self(val.clamp(1, 999) as u16)
+    }
+
+    #[inline]
+    pub const fn value(self) -> u16 {
+        self.0
     }
 }
 
