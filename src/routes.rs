@@ -26,6 +26,7 @@ pub struct RenderRequest {
 }
 
 // takes the left and right card details and then ask sumi to combine them,
+// this is the main endpoint that handles requests to make our drop image.
 // and returns the drop image back to blair to the player @ discord.
 #[tracing::instrument(skip(renderer), fields(left = %request.left, right = %request.right, left_print = request.left_print.unwrap_or(1), right_print = request.right_print.unwrap_or(1)))]
 pub async fn handle_render_drop(
@@ -33,8 +34,8 @@ pub async fn handle_render_drop(
     Query(request): Query<RenderRequest>,
 ) -> Result<impl IntoResponse> {
     let start = Instant::now();
-    let left_print = PrintNumber(request.left_print.unwrap_or(1));
-    let right_print = PrintNumber(request.right_print.unwrap_or(1));
+    let left_print = PrintNumber::new(request.left_print.unwrap_or(1));
+    let right_print = PrintNumber::new(request.right_print.unwrap_or(1));
 
     let image_data =
         match renderer.render_drop(&request.left, &request.right, left_print, right_print).await {
