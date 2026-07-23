@@ -34,10 +34,11 @@ fn copy_card_pixels(buffer: &mut [u8], card: &RawCardImage, total_width: u32, po
 }
 
 #[inline]
-fn format_print_number(print_num: u32, buf: &mut [u8; 32]) -> &[u8] {
+fn format_print_number(print_num: u16, buf: &mut [u8; 8]) -> &[u8] {
+    let num = print_num.clamp(1, 999);
     buf[0] = b'#';
     let mut itoa = Buffer::new();
-    let s = itoa.format(print_num);
+    let s = itoa.format(num);
     let len = 1 + s.len();
     buf[1..len].copy_from_slice(s.as_bytes());
     &buf[..len]
@@ -125,10 +126,10 @@ pub(super) fn create_drop_image(
     copy_card_pixels(&mut buffer, left_card, total_width, Point::new(left_card_x, card_y));
     copy_card_pixels(&mut buffer, right_card, total_width, Point::new(right_card_x, card_y));
 
-    let mut left_print_buf = [0u8; 32];
+    let mut left_print_buf = [0u8; 8];
     let left_print = format_print_number(left_card_print.0, &mut left_print_buf);
 
-    let mut right_print_buf = [0u8; 32];
+    let mut right_print_buf = [0u8; 8];
     let right_print = format_print_number(right_card_print.0, &mut right_print_buf);
 
     let canvas_time = start_canvas.elapsed();
