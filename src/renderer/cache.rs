@@ -154,6 +154,14 @@ impl CardCache {
                             Decoder::new(&file_bytes).and_then(Decoder::decode_rgba_raw);
 
                         decode_res.ok().map(|(pixels, width, height)| {
+                            if width != 725 || height != 1040 {
+                                tracing::warn!(
+                                    "card '{}' dimension is {}x{} (expected 725x1040)",
+                                    path.display(),
+                                    width,
+                                    height
+                                );
+                            }
                             Arc::new(RawCardImage {
                                 size: Size::new(width, height),
                                 pixels: pixels.into_boxed_slice(),
@@ -227,6 +235,15 @@ impl CardCache {
                         path.display()
                     ))
                 })?;
+
+            if width != 725 || height != 1040 {
+                tracing::warn!(
+                    "card '{}' dimension is {}x{} (expected 725x1040)",
+                    path.display(),
+                    width,
+                    height
+                );
+            }
 
             let image =
                 RawCardImage { size: Size::new(width, height), pixels: pixels.into_boxed_slice() };
