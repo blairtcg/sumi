@@ -25,7 +25,14 @@ use crate::metrics::Metrics;
 const TIMEOUT_SECONDS: u64 = 10;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PrintNumber(pub u32);
+pub struct PrintNumber(pub u16);
+
+impl PrintNumber {
+    #[inline]
+    pub fn new(val: u32) -> Self {
+        Self(val.clamp(1, 999) as u16)
+    }
+}
 
 #[derive(Debug)]
 pub struct CardRenderer {
