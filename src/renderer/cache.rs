@@ -147,7 +147,7 @@ impl CardCache {
                         return;
                     }
 
-                    let file_len = file_bytes.len() as u64;
+                    let file_len = u64::(from(file_bytes.len());
 
                     let result = task::spawn_blocking(move || {
                         let decode_res =
