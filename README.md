@@ -4,6 +4,10 @@
   <h2>Image renderer for @Blair!</h2>
 </div>
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/last-commit/blairtcg/sumi.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;font=space-grotesk"><img alt="Last commit" src="https://www.shieldcn.dev/github/last-commit/blairtcg/sumi.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;font=space-grotesk"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/commits/blairtcg/sumi.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;font=space-grotesk"><img alt="Commits" src="https://www.shieldcn.dev/github/commits/blairtcg/sumi.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;font=space-grotesk"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/release/blairtcg/sumi.svg?size=sm&amp;mode=dark&amp;font=space-grotesk&amp;theme=slate"><img alt="Release" src="https://www.shieldcn.dev/github/release/blairtcg/sumi.svg?size=sm&amp;mode=light&amp;font=space-grotesk&amp;theme=slate"></picture>
+
 In upcoming versions, sumi would most likely support profile card creation and top.gg/release card banner previews.
 
 ## Winslop setup
