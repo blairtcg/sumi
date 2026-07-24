@@ -1,4 +1,4 @@
-## - this is the pure rust implementation of sumi.
+## - this is the pure rust implementation of sumi. (slightly outdated code)
 
 here the webp encoder is fully written in rust instead of depending on a wrapper to libwebp's C code 
 
