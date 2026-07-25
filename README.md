@@ -2,11 +2,12 @@
   <img src="assets/IMG_8182.png" alt="Sumi logo" width="200">
 
   <h2>Image renderer for @Blair!</h2>
-</div>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/last-commit/blairtcg/sumi.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;font=space-grotesk"><img alt="Last commit" src="https://www.shieldcn.dev/github/last-commit/blairtcg/sumi.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;font=space-grotesk"></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/commits/blairtcg/sumi.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;font=space-grotesk"><img alt="Commits" src="https://www.shieldcn.dev/github/commits/blairtcg/sumi.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;font=space-grotesk"></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/release/blairtcg/sumi.svg?size=sm&amp;mode=dark&amp;font=space-grotesk&amp;theme=slate"><img alt="Release" src="https://www.shieldcn.dev/github/release/blairtcg/sumi.svg?size=sm&amp;mode=light&amp;font=space-grotesk&amp;theme=slate"></picture>
+  ![Last commit](https://www.shieldcn.dev/github/last-commit/blairtcg/sumi.svg?variant=secondary&size=sm&font=space-grotesk&color=bde0fe)
+![Commits](https://www.shieldcn.dev/github/commits/blairtcg/sumi.svg?variant=secondary&size=sm&font=space-grotesk&color=a8e6cf&labelColor=a8e6cf)
+![Release](https://www.shieldcn.dev/github/release/blairtcg/sumi.svg?size=sm&font=space-grotesk&color=ffb5a2&labelColor=ffb5a2) ![Badge](https://shieldcn.dev/badge/rust%20v1.87-fde293.svg?logo=rust)
+
+</div>
 
 In upcoming versions, sumi would most likely support profile card creation and top.gg/release card banner previews.
 
