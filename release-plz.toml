@@ -1,0 +1,9 @@
+[workspace]
+publish = false
+semver_check = false
+dependencies_update = true
+pr_labels = ["release"]
+git_release_draft = true
+
+[workspace.git_release]
+enable = true
