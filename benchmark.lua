@@ -9,27 +9,30 @@
 -- sumi will likely deal with a maximum of 2s latency on heavy demand
 -- and will "never" exceed our default 10s timeout so it will never fail fast.
 
-
 local cards = {}
 for line in io.lines("cards.txt") do
-    if line ~= "" then table.insert(cards, line) end
+	if line ~= "" then
+		table.insert(cards, line)
+	end
 end
 
 local thread_counter = 1
 function setup(thread)
-    thread:set("id", thread_counter)
-    thread_counter = thread_counter + 1
+	thread:set("id", thread_counter)
+	thread_counter = thread_counter + 1
 end
 
 function init()
-    math.randomseed(os.time() + id)
+	math.randomseed(os.time() + id)
 end
 
 function request()
-    local path = string.format(
-        "/render/drop?left=%s&right=%s&left_print=%d&right_print=%d",
-        cards[math.random(#cards)], cards[math.random(#cards)], 
-        math.random(999), math.random(999)
-    )
-    return wrk.format("GET", path)
+	local path = string.format(
+		"/render/drop?left=%s&right=%s&left_print=%d&right_print=%d",
+		cards[math.random(#cards)],
+		cards[math.random(#cards)],
+		math.random(999),
+		math.random(999)
+	)
+	return wrk.format("GET", path)
 end
