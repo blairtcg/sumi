@@ -6,13 +6,21 @@ use super::{error::RenderError, pixels::Point};
 
 const TEXT_SIZE: f32 = 60.0;
 
+#[derive(Clone, Copy)]
+struct GlyphPixel {
+    fg_rgb: u8,
+    fg_a: u8,
+    inv_a: u8,
+}
+
 struct Letter {
-    coverage: Box<[u8]>,
     width: u16,
     height: u16,
     advance_width: i16,
     offset_x: i16,
     offset_y: i16,
+    shadow_pass: Box<[GlyphPixel]>,
+    white_pass: Box<[GlyphPixel]>,
 }
 
 struct LetterSet {
@@ -30,13 +38,25 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
 
     let render_char = |c: char| -> Letter {
         let (metrics, coverage) = font.rasterize(c, TEXT_SIZE);
+
+        let mut shadow_pass = Vec::with_capacity(coverage.len());
+        let mut white_pass = Vec::with_capacity(coverage.len());
+
+        for &cov in &coverage {
+            white_pass.push(GlyphPixel { fg_rgb: cov, fg_a: cov, inv_a: 255 - cov });
+
+            let shadow_a = ((u32::from(cov) * 160) / 255) as u8;
+            shadow_pass.push(GlyphPixel { fg_rgb: 0, fg_a: shadow_a, inv_a: 255 - shadow_a });
+        }
+
         Letter {
-            coverage: coverage.into_boxed_slice(),
             width: metrics.width as u16,
             height: metrics.height as u16,
             advance_width: metrics.advance_width.round() as i16,
             offset_x: metrics.xmin as i16,
             offset_y: (ascent - metrics.ymin as f32 - metrics.height as f32).round() as i16,
+            shadow_pass: shadow_pass.into_boxed_slice(),
+            white_pass: white_pass.into_boxed_slice(),
         }
     };
 
@@ -54,6 +74,7 @@ pub(super) fn init_font() {
 // canvas_w and letter_w come from unsigned integers
 // canvas_row_idx is verified positive by the bounds check
 // letter_row_idx and letter_col_idx are positive offsets bounded by zero
+// this is same for draw_pass func
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
 pub(super) fn draw_print_number(
     canvas_width: u32,
@@ -62,31 +83,28 @@ pub(super) fn draw_print_number(
     print_number: &[u8],
     pos: Point<i32>,
 ) -> Result<(), RenderError> {
-    // put shadow 1px for visibility issues when bg too bright
-    let shadow_color = [0u8, 0u8, 0u8, 160u8];
-    draw_glyphs(
+    draw_pass(
         canvas_width,
         canvas_height,
         canvas_buf,
         print_number,
         Point::new(pos.x + 1, pos.y + 1),
-        shadow_color,
+        true,
     )?;
 
-    let white_color = [255u8, 255u8, 255u8, 255u8];
-    draw_glyphs(canvas_width, canvas_height, canvas_buf, print_number, pos, white_color)?;
+    draw_pass(canvas_width, canvas_height, canvas_buf, print_number, pos, false)?;
 
     Ok(())
 }
 
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
-fn draw_glyphs(
+fn draw_pass(
     canvas_width: u32,
     canvas_height: u32,
     canvas_buf: &mut [u8],
     print_number: &[u8],
     mut pos: Point<i32>,
-    color: [u8; 4],
+    is_shadow: bool,
 ) -> Result<(), RenderError> {
     let canvas_width = canvas_width.cast_signed();
     let canvas_height = canvas_height.cast_signed();
@@ -110,7 +128,7 @@ fn draw_glyphs(
 
         if draw_y_start >= draw_y_end {
             pos.x += i32::from(letter.advance_width);
-            continue; // offscreen vertically
+            continue;
         }
 
         let draw_x_start = 0.max(-(pos.x + i32::from(letter.offset_x)));
@@ -118,8 +136,10 @@ fn draw_glyphs(
 
         if draw_x_start >= draw_x_end {
             pos.x += i32::from(letter.advance_width);
-            continue; // offscreen horizontally
+            continue;
         }
+
+        let glyph_pass = if is_shadow { &letter.shadow_pass } else { &letter.white_pass };
 
         for draw_y_offset in draw_y_start..draw_y_end {
             let canvas_y = draw_y + draw_y_offset;
@@ -142,67 +162,19 @@ fn draw_glyphs(
                     RenderError::Internal("canvas pixel range out of bounds".to_string())
                 })?;
             let letter_row =
-                letter.coverage.get(letter_pixel_start..letter_pixel_end).ok_or_else(|| {
+                glyph_pass.get(letter_pixel_start..letter_pixel_end).ok_or_else(|| {
                     RenderError::Internal("letter coverage range out of bounds".to_string())
                 })?;
 
-            for (pixel, coverage) in
-                target_pixels.chunks_exact_mut(4).zip(letter_row.iter().copied())
-            {
-                if coverage == 255 {
-                    if color[3] == 255 {
-                        pixel[0] = color[0];
-                        pixel[1] = color[1];
-                        pixel[2] = color[2];
-                        pixel[3] = 255;
-                    } else {
-                        let fg_a = u32::from(color[3]);
-                        let inv_fg_a = 255 - fg_a;
-                        let bg_a = u32::from(pixel[3]);
-                        let out_a = (fg_a * 255 + bg_a * inv_fg_a) / 255;
-                        if out_a > 0 {
-                            let r = u32::from(pixel[0]);
-                            let g = u32::from(pixel[1]);
-                            let b = u32::from(pixel[2]);
-                            pixel[0] = ((u32::from(color[0]) * fg_a + r * inv_fg_a) / 255) as u8;
-                            pixel[1] = ((u32::from(color[1]) * fg_a + g * inv_fg_a) / 255) as u8;
-                            pixel[2] = ((u32::from(color[2]) * fg_a + b * inv_fg_a) / 255) as u8;
-                            pixel[3] = out_a as u8;
-                        }
-                    }
-                } else if coverage > 0 {
-                    let fg_a = (u32::from(coverage) * u32::from(color[3])) / 255;
-                    if fg_a == 0 {
-                        continue;
-                    }
-                    let inv_fg_a = 255 - fg_a;
-                    let bg_a = u32::from(pixel[3]);
+            for (pixel, glyph) in target_pixels.chunks_exact_mut(4).zip(letter_row.iter()) {
+                let fg_rgb = u16::from(glyph.fg_rgb);
+                let fg_a = u16::from(glyph.fg_a);
+                let inv_a = u16::from(glyph.inv_a);
 
-                    let out_a_times_255 = fg_a * 255 + bg_a * inv_fg_a;
-                    let out_a = out_a_times_255 / 255;
-
-                    if out_a == 0 {
-                        continue;
-                    }
-
-                    let r = u32::from(pixel[0]);
-                    let g = u32::from(pixel[1]);
-                    let b = u32::from(pixel[2]);
-
-                    let fg_r = u32::from(color[0]);
-                    let fg_g = u32::from(color[1]);
-                    let fg_b = u32::from(color[2]);
-
-                    let fg_term_r = fg_r * 255 * fg_a;
-                    let fg_term_g = fg_g * 255 * fg_a;
-                    let fg_term_b = fg_b * 255 * fg_a;
-                    let bg_term = bg_a * inv_fg_a;
-
-                    pixel[0] = ((fg_term_r + r * bg_term) / out_a_times_255) as u8;
-                    pixel[1] = ((fg_term_g + g * bg_term) / out_a_times_255) as u8;
-                    pixel[2] = ((fg_term_b + b * bg_term) / out_a_times_255) as u8;
-                    pixel[3] = out_a as u8;
-                }
+                pixel[0] = (fg_rgb + ((u16::from(pixel[0]) * inv_a) / 255)) as u8;
+                pixel[1] = (fg_rgb + ((u16::from(pixel[1]) * inv_a) / 255)) as u8;
+                pixel[2] = (fg_rgb + ((u16::from(pixel[2]) * inv_a) / 255)) as u8;
+                pixel[3] = (fg_a + ((u16::from(pixel[3]) * inv_a) / 255)) as u8;
             }
         }
 
