@@ -1,6 +1,7 @@
-use std::{sync::Mutex, time::Instant};
+use std::{sync::LazyLock, time::Instant};
 
 use bytes::Bytes;
+use crossbeam_queue::ArrayQueue;
 use itoa::Buffer;
 
 use super::{
@@ -44,7 +45,8 @@ fn format_print_number(print_num: u16, buf: &mut [u8; 8]) -> &[u8] {
     &buf[..len]
 }
 
-static DROP_POOL: Mutex<Vec<Vec<u8>>> = Mutex::new(Vec::new());
+static DROP_POOL: LazyLock<ArrayQueue<Vec<u8>>> =
+    LazyLock::new(|| ArrayQueue::new(MAX_POOL_BUFFERS));
 const MAX_POOL_BUFFERS: usize = 16;
 
 struct BufferGuard {
@@ -63,11 +65,8 @@ impl BufferGuard {
 impl Drop for BufferGuard {
     #[inline]
     fn drop(&mut self) {
-        let mut pool = DROP_POOL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        if pool.len() < MAX_POOL_BUFFERS {
-            let buf = std::mem::take(&mut self.buffer);
-            pool.push(buf);
-        }
+        let buf = std::mem::take(&mut self.buffer);
+        let _ = DROP_POOL.push(buf);
     }
 }
 
@@ -108,14 +107,7 @@ pub(super) fn create_drop_image(
     // make sure buffer big enough for image (width * height * 4 bytes per pixel)
     let required_len = (total_width * total_height * 4) as usize;
 
-    let mut buffer = BufferGuard::new(
-        DROP_POOL
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .pop()
-            .unwrap_or_default(),
-        required_len,
-    );
+    let mut buffer = BufferGuard::new(DROP_POOL.pop().unwrap_or_default(), required_len);
 
     // count starting position for the left and right card.
     let left_card_x = PADDING_BETWEEN_CARDS;
