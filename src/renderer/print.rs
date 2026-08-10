@@ -90,11 +90,9 @@ pub(super) fn draw_print_number(
         print_number,
         Point::new(pos.x + 1, pos.y + 1),
         true,
-    )?;
+    );
 
-    draw_pass(canvas_width, canvas_height, canvas_buf, print_number, pos, false)?;
-
-    Ok(())
+    draw_pass(canvas_width, canvas_height, canvas_buf, print_number, pos, false);
 }
 
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
