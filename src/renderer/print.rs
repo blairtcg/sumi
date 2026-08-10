@@ -82,7 +82,7 @@ pub(super) fn draw_print_number(
     canvas_buf: &mut [u8],
     print_number: &[u8],
     pos: Point<i32>,
-) -> Result<(), RenderError> {
+{
     draw_pass(
         canvas_width,
         canvas_height,
@@ -103,7 +103,7 @@ fn draw_pass(
     print_number: &[u8],
     mut pos: Point<i32>,
     is_shadow: bool,
-) -> Result<(), RenderError> {
+) {
     let canvas_width = canvas_width.cast_signed();
     let canvas_height = canvas_height.cast_signed();
     let canvas_w = canvas_width as usize;
@@ -155,14 +155,8 @@ fn draw_pass(
             let canvas_pixel_end = canvas_pixel_start + count * 4;
             let letter_pixel_end = letter_pixel_start + count;
 
-            let target_pixels =
-                canvas_buf.get_mut(canvas_pixel_start..canvas_pixel_end).ok_or_else(|| {
-                    RenderError::Internal("canvas pixel range out of bounds".to_string())
-                })?;
-            let letter_row =
-                glyph_pass.get(letter_pixel_start..letter_pixel_end).ok_or_else(|| {
-                    RenderError::Internal("letter coverage range out of bounds".to_string())
-                })?;
+            let target_pixels = &mut canvas_buf[canvas_pixel_start..canvas_pixel_end];
+            let letter_row = &glyph_pass[letter_pixel_start..letter_pixel_end];
 
             for (pixel, glyph) in target_pixels.chunks_exact_mut(4).zip(letter_row.iter()) {
                 let fg_rgb = u32::from(glyph.fg_rgb);
