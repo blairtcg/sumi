@@ -144,14 +144,14 @@ pub(super) fn create_drop_image(
         &mut buffer[..required_len],
         left_print,
         Point::new(left_print_x, print_y),
-    )?;
+    );
     draw_print_number(
         total_width,
         total_height,
         &mut buffer[..required_len],
         right_print,
         Point::new(right_print_x, print_y),
-    )?;
+    );
 
     let print_time = start_print.elapsed();
     let start_encode = Instant::now();
