@@ -167,14 +167,19 @@ fn draw_pass(
                 })?;
 
             for (pixel, glyph) in target_pixels.chunks_exact_mut(4).zip(letter_row.iter()) {
-                let fg_rgb = u16::from(glyph.fg_rgb);
-                let fg_a = u16::from(glyph.fg_a);
-                let inv_a = u16::from(glyph.inv_a);
+                let fg_rgb = u32::from(glyph.fg_rgb);
+                let fg_a = u32::from(glyph.fg_a);
+                let inv_a = u32::from(glyph.inv_a);
 
-                pixel[0] = (fg_rgb + ((u16::from(pixel[0]) * inv_a) / 255)) as u8;
-                pixel[1] = (fg_rgb + ((u16::from(pixel[1]) * inv_a) / 255)) as u8;
-                pixel[2] = (fg_rgb + ((u16::from(pixel[2]) * inv_a) / 255)) as u8;
-                pixel[3] = (fg_a + ((u16::from(pixel[3]) * inv_a) / 255)) as u8;
+                let blend = |bg: u8, fg: u32, inv: u32| -> u8 {
+                    let t = u32::from(bg) * inv + 128;
+                    (fg + ((t + (t >> 8)) >> 8)) as u8
+                };
+
+                pixel[0] = blend(pixel[0], fg_rgb, inv_a);
+                pixel[1] = blend(pixel[1], fg_rgb, inv_a);
+                pixel[2] = blend(pixel[2], fg_rgb, inv_a);
+                pixel[3] = blend(pixel[3], fg_a, inv_a);
             }
         }
 
