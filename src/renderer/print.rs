@@ -82,7 +82,7 @@ pub(super) fn draw_print_number(
     canvas_buf: &mut [u8],
     print_number: &[u8],
     pos: Point<i32>,
-{
+) {
     draw_pass(
         canvas_width,
         canvas_height,
@@ -177,7 +177,6 @@ fn draw_pass(
 
         pos.x += i32::from(letter.advance_width);
     }
-    Ok(())
 }
 
 // measures how many padding needed for our print numbers
