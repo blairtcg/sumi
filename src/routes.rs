@@ -47,8 +47,8 @@ pub async fn handle_render_drop(
 
     let elapsed = start.elapsed();
     let bytes_sent = image_data.len();
-    let image_bytes = u64::try_from(bytes_sent).unwrap_or(u64::MAX);
-    let render_ms = u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX);
+    let image_bytes = bytes_sent as u64;
+    let render_ms = elapsed.as_millis() as u64;
 
     renderer.stats.record_success(ImageBytes(image_bytes), RenderDurationMs(render_ms));
 
