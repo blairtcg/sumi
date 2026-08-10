@@ -2,7 +2,7 @@ use std::{array, sync::LazyLock};
 
 use fontdue::{Font, FontSettings};
 
-use super::{error::RenderError, pixels::Point};
+use super::pixels::Point;
 
 const TEXT_SIZE: f32 = 60.0;
 
