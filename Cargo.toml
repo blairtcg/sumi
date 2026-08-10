@@ -5,20 +5,20 @@
   rust-version = "1.87"
 
 [dependencies]
-  axum               = "0.8.9"
-  bytes              = "1.12.1"
-  crossbeam-queue    = "0.3.13"
-  fontdue            = "0.9.3"
-  mimalloc           = "0.1.52"
-  dashmap            = "6.2.1"
   ahash              = "0.8.12"
-  tracing            = "0.1.44"
-  tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-  serde              = { version = "1.0.229", features = ["derive"] }
-  serde_json         = "1.0.151"
-  tokio              = { version = "1.53.1", features = ["rt-multi-thread", "sync", "fs", "signal", "macros", "net", "time"] }
-  webpx              = "0.4.0"
+  axum               = { version = "0.8.9", features = ["http1", "json", "query", "tokio"], default-features = false }
+  bytes              = { version = "1.12.1", default-features = false }
+  crossbeam-queue    = { version = "0.3.13", features = ["alloc"], default-features = false }
+  dashmap            = "6.2.1"
+  fontdue            = { version = "0.9.3", default-features = false }
   itoa               = "1.0.18"
+  mimalloc           = "0.1.52"
+  serde              = { version = "1.0.228", features = ["serde_derive"], default-features = false }
+  serde_json         = "1.0.151"
+  tokio              = { version = "1.53.0", features = ["fs", "rt-multi-thread", "signal"] }
+  tracing            = { version = "0.1.44", features = ["attributes"], default-features = false }
+  tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"], default-features = false }
+  webpx              = { version = "0.4.0", features = ["decode", "encode"], default-features = false }
 
 [profile.release]
   lto           = "fat"
