@@ -35,10 +35,9 @@ fn copy_card_pixels(buffer: &mut [u8], card: &RawCardImage, total_width: u32, po
 
 #[inline]
 fn format_print_number(print_num: u16, buf: &mut [u8; 8]) -> &[u8] {
-    let num = print_num.clamp(1, 999);
     buf[0] = b'#';
     let mut itoa = Buffer::new();
-    let s = itoa.format(num);
+    let s = itoa.format(print_num);
     let len = 1 + s.len();
     buf[1..len].copy_from_slice(s.as_bytes());
     &buf[..len]
