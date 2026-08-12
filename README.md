@@ -23,7 +23,7 @@ Download and run rustup-init.exe from <https://rustup.rs/>
 
 <div align="center">
 
-<img src="https://i.ibb.co.com/KcYMw1m8/IMG-8620.png" alt="Sumi Rendering Architecture" width="700">
+<img src="https://i.ibb.co.com/zTYV5dC0/IMG-8622.png" alt="sumimi" width="700">
 
 </div>
 
