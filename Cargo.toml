@@ -10,12 +10,12 @@
   bytes              = { version = "1.12.1", default-features = false }
   crossbeam-queue    = { version = "0.3.13", features = ["alloc"], default-features = false }
   dashmap            = "6.2.1"
-  fontdue            = { version = "0.9.3", default-features = false }
+  fontdue            = { version = "0.9.4", default-features = false }
   itoa               = "1.0.18"
   mimalloc           = "0.1.52"
-  serde              = { version = "1.0.228", features = ["serde_derive"], default-features = false }
+  serde              = { version = "1.0.229", features = ["serde_derive"], default-features = false }
   serde_json         = "1.0.151"
-  tokio              = { version = "1.53.0", features = ["fs", "rt-multi-thread", "signal"] }
+  tokio              = { version = "1.53.1", features = ["fs", "rt-multi-thread", "signal"] }
   tracing            = { version = "0.1.44", features = ["attributes"], default-features = false }
   tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"], default-features = false }
   webpx              = { version = "0.4.0", features = ["decode", "encode"], default-features = false }
