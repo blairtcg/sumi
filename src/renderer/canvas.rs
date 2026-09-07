@@ -54,8 +54,10 @@ struct BufferGuard {
 impl BufferGuard {
     #[inline]
     fn new(mut buffer: Vec<u8>, required_len: usize) -> Self {
-        buffer.clear();
-        buffer.resize(required_len, 0);
+        if buffer.len() != required_len {
+            buffer.clear();
+            buffer.resize(required_len, 0);
+        }
         Self { buffer }
     }
 }
