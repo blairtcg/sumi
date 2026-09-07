@@ -19,7 +19,8 @@ struct Letter {
     advance_width: i16,
     offset_x: i16,
     offset_y: i16,
-    shadow_pass: Box<[GlyphPixel]>,
+    ambient_shadow_pass: Box<[GlyphPixel]>,
+    contact_shadow_pass: Box<[GlyphPixel]>,
     white_pass: Box<[GlyphPixel]>,
 }
 
@@ -39,14 +40,20 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
     let render_char = |c: char| -> Letter {
         let (metrics, coverage) = font.rasterize(c, TEXT_SIZE);
 
-        let mut shadow_pass = Vec::with_capacity(coverage.len());
+        let mut ambient_shadow_pass = Vec::with_capacity(coverage.len());
+        let mut contact_shadow_pass = Vec::with_capacity(coverage.len());
         let mut white_pass = Vec::with_capacity(coverage.len());
 
         for &cov in &coverage {
             white_pass.push(GlyphPixel { fg_rgb: cov, fg_a: cov, inv_a: 255 - cov });
 
-            let shadow_a = ((u32::from(cov) * 160) / 255) as u8;
-            shadow_pass.push(GlyphPixel { fg_rgb: 0, fg_a: shadow_a, inv_a: 255 - shadow_a });
+            let ambient_a = ((u32::from(cov) * 90) / 255) as u8;
+            ambient_shadow_pass
+                .push(GlyphPixel { fg_rgb: 0, fg_a: ambient_a, inv_a: 255 - ambient_a });
+
+            let contact_a = ((u32::from(cov) * 190) / 255) as u8;
+            contact_shadow_pass
+                .push(GlyphPixel { fg_rgb: 0, fg_a: contact_a, inv_a: 255 - contact_a });
         }
 
         Letter {
@@ -55,7 +62,8 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
             advance_width: metrics.advance_width.round() as i16,
             offset_x: metrics.xmin as i16,
             offset_y: (ascent - metrics.ymin as f32 - metrics.height as f32).round() as i16,
-            shadow_pass: shadow_pass.into_boxed_slice(),
+            ambient_shadow_pass: ambient_shadow_pass.into_boxed_slice(),
+            contact_shadow_pass: contact_shadow_pass.into_boxed_slice(),
             white_pass: white_pass.into_boxed_slice(),
         }
     };
@@ -68,6 +76,13 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
 
 pub(super) fn init_font() {
     LazyLock::force(&LETTERS);
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PassKind {
+    AmbientShadow,
+    ContactShadow,
+    Foreground,
 }
 
 // !!! all as usize casts are safe from sign loss !!!
@@ -88,11 +103,27 @@ pub(super) fn draw_print_number(
         canvas_height,
         canvas_buf,
         print_number,
-        Point::new(pos.x + 1, pos.y + 1),
-        true,
+        Point::new(pos.x + 2, pos.y + 2),
+        PassKind::AmbientShadow,
     );
 
-    draw_pass(canvas_width, canvas_height, canvas_buf, print_number, pos, false);
+    draw_pass(
+        canvas_width,
+        canvas_height,
+        canvas_buf,
+        print_number,
+        Point::new(pos.x + 1, pos.y + 1),
+        PassKind::ContactShadow,
+    );
+
+    draw_pass(
+        canvas_width,
+        canvas_height,
+        canvas_buf,
+        print_number,
+        pos,
+        PassKind::Foreground,
+    );
 }
 
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
@@ -102,7 +133,7 @@ fn draw_pass(
     canvas_buf: &mut [u8],
     print_number: &[u8],
     mut pos: Point<i32>,
-    is_shadow: bool,
+    pass_kind: PassKind,
 ) {
     let canvas_width = canvas_width.cast_signed();
     let canvas_height = canvas_height.cast_signed();
@@ -137,7 +168,11 @@ fn draw_pass(
             continue;
         }
 
-        let glyph_pass = if is_shadow { &letter.shadow_pass } else { &letter.white_pass };
+        let glyph_pass = match pass_kind {
+            PassKind::AmbientShadow => &letter.ambient_shadow_pass,
+            PassKind::ContactShadow => &letter.contact_shadow_pass,
+            PassKind::Foreground => &letter.white_pass,
+        };
 
         for draw_y_offset in draw_y_start..draw_y_end {
             let canvas_y = draw_y + draw_y_offset;
@@ -163,8 +198,25 @@ fn draw_pass(
                     continue;
                 }
 
-                if !is_shadow && glyph.fg_a == 255 {
+                if pass_kind == PassKind::Foreground && glyph.fg_a == 255 {
                     pixel.copy_from_slice(&[255, 255, 255, 255]);
+                    continue;
+                }
+
+                if pass_kind != PassKind::Foreground {
+                    let inv_a = u32::from(glyph.inv_a);
+                    let fg_a = u32::from(glyph.fg_a);
+
+                    let scale = |bg: u8| -> u8 {
+                        let t = u32::from(bg) * inv_a + 128;
+                        ((t + (t >> 8)) >> 8) as u8
+                    };
+
+                    pixel[0] = scale(pixel[0]);
+                    pixel[1] = scale(pixel[1]);
+                    pixel[2] = scale(pixel[2]);
+                    let t_alpha = u32::from(pixel[3]) * inv_a + 128;
+                    pixel[3] = (fg_a + ((t_alpha + (t_alpha >> 8)) >> 8)) as u8;
                     continue;
                 }
 
