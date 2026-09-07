@@ -159,6 +159,15 @@ fn draw_pass(
             let letter_row = &glyph_pass[letter_pixel_start..letter_pixel_end];
 
             for (pixel, glyph) in target_pixels.chunks_exact_mut(4).zip(letter_row.iter()) {
+                if glyph.fg_a == 0 {
+                    continue;
+                }
+
+                if !is_shadow && glyph.fg_a == 255 {
+                    pixel.copy_from_slice(&[255, 255, 255, 255]);
+                    continue;
+                }
+
                 let fg_rgb = u32::from(glyph.fg_rgb);
                 let fg_a = u32::from(glyph.fg_a);
                 let inv_a = u32::from(glyph.inv_a);
