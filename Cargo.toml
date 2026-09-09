@@ -8,7 +8,7 @@
   ahash              = "0.8.12"
   axum               = { version = "0.8.9", features = ["http1", "json", "query", "tokio"], default-features = false }
   bytes              = { version = "1.12.1", default-features = false }
-  crossbeam-queue    = { version = "0.3.13", features = ["alloc"], default-features = false }
+  crossbeam-queue    = { version = "0.3.14", features = ["alloc"], default-features = false }
   dashmap            = "6.2.1"
   fontdue            = { version = "0.9.4", default-features = false }
   itoa               = "1.0.18"
