@@ -3,9 +3,6 @@ name: Benchmark sumi
 on:
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -31,7 +28,7 @@ jobs:
         echo "generated cards.txt"
         cat cards.txt
 
-    - name: Start sumi and Run benchmark
+    - name: Start sumi and run benchmark
       env:
         CARDS_DIR: "assets"
         PORT: 6767
