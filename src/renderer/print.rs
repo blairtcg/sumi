@@ -48,12 +48,18 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
             white_pass.push(GlyphPixel { fg_rgb: cov, fg_a: cov, inv_a: 255 - cov });
 
             let ambient_a = ((u32::from(cov) * 90) / 255) as u8;
-            ambient_shadow_pass
-                .push(GlyphPixel { fg_rgb: 0, fg_a: ambient_a, inv_a: 255 - ambient_a });
+            ambient_shadow_pass.push(GlyphPixel {
+                fg_rgb: 0,
+                fg_a: ambient_a,
+                inv_a: 255 - ambient_a,
+            });
 
             let contact_a = ((u32::from(cov) * 190) / 255) as u8;
-            contact_shadow_pass
-                .push(GlyphPixel { fg_rgb: 0, fg_a: contact_a, inv_a: 255 - contact_a });
+            contact_shadow_pass.push(GlyphPixel {
+                fg_rgb: 0,
+                fg_a: contact_a,
+                inv_a: 255 - contact_a,
+            });
         }
 
         Letter {
@@ -116,14 +122,7 @@ pub(super) fn draw_print_number(
         PassKind::ContactShadow,
     );
 
-    draw_pass(
-        canvas_width,
-        canvas_height,
-        canvas_buf,
-        print_number,
-        pos,
-        PassKind::Foreground,
-    );
+    draw_pass(canvas_width, canvas_height, canvas_buf, print_number, pos, PassKind::Foreground);
 }
 
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
