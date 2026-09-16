@@ -8,6 +8,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Show specs
+      run: |
+          echo "CPU ------"
+          lscpu
+          echo ""
+          echo "RAM ------"
+          free -h
+          echo ""
+          echo "disk space ------"
+          df -h /
+          echo ""
+          echo "os version ------"
+          cat /etc/os-release
+
     - uses: actions/checkout@v4
 
     - name: Install rust
