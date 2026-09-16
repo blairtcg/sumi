@@ -9,10 +9,9 @@ use super::{
     encoder::encode_webp,
     error::Result,
     pixels::{Point, RawCardImage},
-    print::{draw_print_number, measure_print_number},
+    print::{TEXT_SIZE, draw_print_number, measure_print_number},
 };
-
-const TEXT_SIZE: f32 = 60.0;
+ 
 const TEXT_PADDING_FROM_EDGE: i32 = 190;
 const PADDING_BETWEEN_CARDS: u32 = 20;
 const TEXT_PADDING_FROM_BOTTOM: i32 = 80;
