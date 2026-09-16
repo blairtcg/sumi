@@ -70,10 +70,7 @@ fn decode_card_from_disk(path: &Path) -> Result<(Arc<RawCardImage>, u64)> {
         );
     }
 
-    let image = RawCardImage {
-        size: Size::new(width, height),
-        pixels: pixels.into_boxed_slice(),
-    };
+    let image = RawCardImage { size: Size::new(width, height), pixels: pixels.into_boxed_slice() };
 
     Ok((Arc::new(image), file_len))
 }
