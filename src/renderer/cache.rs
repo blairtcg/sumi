@@ -145,7 +145,9 @@ impl CardCache {
                         };
 
                         // check if its webp or not.
-                        if !file_bytes.starts_with(b"RIFF") || file_bytes.get(8..12) != Some(b"WEBP") {
+                        if !file_bytes.starts_with(b"RIFF")
+                            || file_bytes.get(8..12) != Some(b"WEBP")
+                        {
                             tracing::warn!("skipped '{}' (only webp supported)", path.display());
                             return None;
                         }
