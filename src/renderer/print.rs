@@ -4,7 +4,7 @@ use fontdue::{Font, FontSettings};
 
 use super::pixels::Point;
 
-const TEXT_SIZE: f32 = 60.0;
+pub(super) const TEXT_SIZE: f32 = 60.0;
 
 #[derive(Clone, Copy)]
 struct GlyphPixel {
