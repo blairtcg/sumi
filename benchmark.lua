@@ -11,28 +11,45 @@
 
 local cards = {}
 for line in io.lines("cards.txt") do
-	if line ~= "" then
-		table.insert(cards, line)
-	end
+    if line ~= "" then
+        table.insert(cards, line)
+    end
 end
 
 local thread_counter = 1
 function setup(thread)
-	thread:set("id", thread_counter)
-	thread_counter = thread_counter + 1
+    thread:set("id", thread_counter)
+    thread_counter = thread_counter + 1
 end
 
-function init()
-	math.randomseed(os.time() + id)
+local requests = {}
+local req_idx = 1
+local req_pool_size = 20000
+
+function init(args)
+    math.randomseed(os.time() + id)
+
+    for i = 1, req_pool_size do
+        local path =
+            string.format(
+            "/render/drop?left=%s&right=%s&left_print=%d&right_print=%d",
+            cards[math.random(#cards)],
+            cards[math.random(#cards)],
+            math.random(999),
+            math.random(999)
+        )
+
+        requests[i] = wrk.format("GET", path)
+    end
 end
 
 function request()
-	local path = string.format(
-		"/render/drop?left=%s&right=%s&left_print=%d&right_print=%d",
-		cards[math.random(#cards)],
-		cards[math.random(#cards)],
-		math.random(999),
-		math.random(999)
-	)
-	return wrk.format("GET", path)
+    local req = requests[req_idx]
+
+    req_idx = req_idx + 1
+    if req_idx > req_pool_size then
+        req_idx = 1
+    end
+
+    return req
 end
