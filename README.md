@@ -25,6 +25,8 @@ Download and run rustup-init.exe from <https://rustup.rs/>
 
 <img src="https://i.ibb.co.com/zTYV5dC0/IMG-8622.png" alt="sumimi" width="700">
 
+<img src="assets/IMG_8783.png" alt="Sumi drop image" width="700">
+
 </div>
 
 
