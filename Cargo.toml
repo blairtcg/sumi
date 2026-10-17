@@ -14,7 +14,7 @@
   itoa               = "1.0.18"
   mimalloc           = "0.1.52"
   serde              = { version = "1.0.229", features = ["serde_derive"], default-features = false }
-  serde_json         = "1.0.151"
+  serde_json         = "1.0.154"
   tokio              = { version = "1.53.1", features = ["fs", "rt-multi-thread", "signal"] }
   tracing            = { version = "0.1.44", features = ["attributes"], default-features = false }
   tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"], default-features = false }
