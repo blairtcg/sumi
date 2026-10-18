@@ -21,7 +21,7 @@
   webpx              = { version = "0.4.0", features = ["decode", "encode"], default-features = false }
   butteraugli        = ">=0.9.3"
   imgref             = "1.11"
-  rgb                = "0.8
+  rgb                = "0.8"
 
 [[bin]]
   name = "butteraugli"
