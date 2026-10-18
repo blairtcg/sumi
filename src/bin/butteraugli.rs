@@ -26,7 +26,7 @@ fn encode_webp(w: u32, h: u32, rgba: &[u8], quality: f32) -> Vec<u8> {
         .expect("webp encode failed")
 }
 
-// blend alpha pixq biar butteraugli ga ngitung pixel gak ngaruh
+// blend alpha pix biar butteraugli ga ngitung pixel gak ngaruh
 #[inline]
 fn blend_bg(c: &[u8]) -> RGB8 {
     match c[3] {
@@ -65,6 +65,25 @@ struct Stat {
     avg_ms: f64,
 }
 
+fn find_cards(cards_dir: &Path) -> Vec<String> {
+    fn scan(base: &Path, dir: &Path, acc: &mut Vec<String>) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return; };
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                scan(base, &p, acc);
+            } else if p.extension().and_then(|s| s.to_str()).map_or(false, |ext| ext.eq_ignore_ascii_case("webp")) {
+                if let Ok(rel) = p.strip_prefix(base) {
+                    acc.push(rel.with_extension("").to_string_lossy().replace('\\', "/"));
+                }
+            }
+        }
+    }
+    let mut cards = Vec::new();
+    scan(cards_dir, cards_dir, &mut cards);
+    cards
+}
+
 #[tokio::main]
 async fn main() {
     let cards_dir = env::var("CARDS_DIR").unwrap_or_else(|_| "assets".to_string());
@@ -78,7 +97,7 @@ async fn main() {
         }
     };
 
-    let names = cache.card_names();
+    let names = find_cards(Path::new(&cards_dir));
     if names.is_empty() {
         eprintln!("? no cards found in '{cards_dir}'");
         std::process::exit(1);
@@ -148,3 +167,4 @@ async fn main() {
         );
     }
 }
+
