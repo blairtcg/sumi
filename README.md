@@ -69,6 +69,47 @@ Transfer/sec:     16.45MB
 ```
 </details>
 
+## butteraugli
+ 
+Instead of manual testing for webp quality settings, we use [Butteraugli](https://github.com/google/butteraugli) the psychovisual estimation tool designed by *Jyrki Alakuijala* (creator of Zopfli at Google!)
+
+Butteraugli calculates the difference of two images and scores the differences of them on whatever the human eye can notice (aka shitty compression artifacts etc).
+ 
+### method(0)
+
+In our webp encoder settings, the use of `method(0)` is to keep drops rendering in ~50 ms which inevitably will result in noticeable artifacts in our cards (if you zoom in). This removes possibility for full webp lossless capability to trade for speed.
+ 
+### Results
+ 
+```text
+  quality    avg score    max score     avg size    savings      encode    rating
+  ─────────────────────────────────────────────────────────────────────────────────────
+  Q 65.0        3.961        4.956     108.8 KB    +28.4%     23.40 ms    heavy loss
+  Q 70.0        3.834        5.313     109.5 KB    +27.9%     23.18 ms    moderate loss
+  Q 75.0        3.855        5.328     114.8 KB    +24.4%     23.59 ms    heavy loss
+  Q 78.0        3.350        5.072     117.7 KB    +22.5%     24.50 ms    sweet spot
+  Q 80.0        3.121        4.632     127.4 KB    +16.1%     25.44 ms    great
+  Q 82.0        3.098        4.951     136.9 KB     +9.9%     26.06 ms    great
+  Q 85.0        2.807        4.757     151.8 KB     +0.0%     26.90 ms    elysium
+  Q 90.0        2.675        4.761     137.2 KB     +9.6%     30.33 ms    elysium
+```
+ 
+### Q 80
+
+At Q 80.0, the worst case card score is 4.632, lower than Q85 (`4.757`) and Q90 (`4.761`) (probably due to random cards but this has been tested repeatedly and the usual winner is either Q 78 / 80 which in this case we settle to Q 80 to maximize quality)
+
+Cuts ~24.4 KB per card (~49 KB per our 2 card drop)
+
+Below Q78, distortion will increase over `3.85+` where all the blurriness becomes noticeable
+ 
+## Run butteraugli
+ 
+```powershell
+just butter
+```
+
+Make sure to set correct directory to cards
+
 ## Build sumi
 
 ```powershell
