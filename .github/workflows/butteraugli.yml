@@ -1,0 +1,35 @@
+name: Butteraugli
+
+on:
+  workflow_dispatch:
+    inputs:
+      cards_dir:
+        description: "Directory containing card assets"
+        required: false
+        default: "assets"
+        type: string
+
+jobs:
+  calibrate:
+    name: Butteraugli Quality Calibration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install nightly --profile minimal
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Calibrate Binary
+        run: cargo +nightly build --release --bin butter
+
+      - name: Run Butteraugli Calibration
+        env:
+          CARDS_DIR: ${{ inputs.cards_dir || 'assets' }}
+          RUST_LOG: info
+        run: |
+          ./target/release/butter
