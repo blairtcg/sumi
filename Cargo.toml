@@ -20,6 +20,10 @@
   tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"], default-features = false }
   webpx              = { version = "0.4.0", features = ["decode", "encode"], default-features = false }
 
+[[bin]]
+  name = "butter"
+  path = "src/bin/butteraugli.rs"
+
 [profile.release]
   lto           = "fat"
   opt-level     = 3
