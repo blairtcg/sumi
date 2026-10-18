@@ -25,11 +25,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build Calibrate Binary
-        run: cargo +nightly build --release --bin butter
+        run: cargo +nightly build --release --bin butteraugli
 
       - name: Run Butteraugli Calibration
         env:
           CARDS_DIR: ${{ inputs.cards_dir || 'assets' }}
           RUST_LOG: info
         run: |
-          ./target/release/butter
+          ./target/release/butteraugli
