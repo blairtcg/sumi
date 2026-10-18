@@ -3,9 +3,9 @@ use webpx::{AlphaFilter, EncoderConfig, ImageHint, Preset, Unstoppable};
 
 use crate::renderer::error::{RenderError, Result};
 
-const WEBP_QUALITY: f32 = 85.0;
+const WEBP_QUALITY: f32 = 80.0; // see butteraugli readme section
 const WEBP_SPEED: u8 = 0;
-const WEBP_ALPHA_QUALITY: u8 = 85;
+const WEBP_ALPHA_QUALITY: u8 = 85; // ideally we should try test this as well.
 const WEBP_THREAD_LEVEL: u8 = 0;
 const WEBP_SEGMENTS: u8 = 1;
 
