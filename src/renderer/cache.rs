@@ -57,9 +57,19 @@ fn decode_card_from_disk(path: &Path) -> Result<(Arc<RawCardImage>, u64)> {
 
     let file_len = u64::try_from(file_bytes.len()).unwrap_or(u64::MAX);
 
-    let (pixels, width, height) = webpx::decode_rgba(&file_bytes).map_err(|e| {
+    let (mut pixels, width, height) = webpx::decode_rgba(&file_bytes).map_err(|e| {
         RenderError::Internal(format!("failed to decode webp for '{}': {e:?}", path.display()))
     })?;
+
+    // if the pixel is fully transparent, zero out the rgb
+    // webpx compresses transparent borders into runs of zeroes for free
+    for px in pixels.chunks_exact_mut(4) {
+        if px[3] == 0 {
+            px[0] = 0;
+            px[1] = 0;
+            px[2] = 0;
+        }
+    }
 
     if width != 725 || height != 1040 {
         tracing::warn!(
