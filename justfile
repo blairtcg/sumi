@@ -9,6 +9,9 @@ build:
 run:
     cargo run --release
 
+butter:
+    cargo run --release --bin butteraugli
+
 fmt:
     cargo fmt --all
 
