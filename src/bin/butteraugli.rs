@@ -35,7 +35,9 @@ fn blend_bg(c: &[u8]) -> RGB8 {
         a => {
             let alpha = u32::from(a);
             let inv_a = 255 - alpha;
-            let blend = |fg: u8, bg: u8| ((u32::from(fg) * alpha + u32::from(bg) * inv_a + 127) / 255) as u8;
+            let blend = |fg: u8, bg: u8| {
+                ((u32::from(fg) * alpha + u32::from(bg) * inv_a + 127) / 255) as u8
+            };
             RGB8::new(
                 blend(c[0], DISCORD_BG.r),
                 blend(c[1], DISCORD_BG.g),
@@ -49,12 +51,8 @@ fn score(w: usize, h: usize, orig_rgba: &[u8], dist_rgba: &[u8]) -> f64 {
     let orig: Vec<RGB8> = orig_rgba.chunks_exact(4).map(blend_bg).collect();
     let dist: Vec<RGB8> = dist_rgba.chunks_exact(4).map(blend_bg).collect();
 
-    butteraugli(
-        ImgRef::new(&orig, w, h),
-        ImgRef::new(&dist, w, h),
-        &ButteraugliParams::default(),
-    )
-    .map_or(99.0, |res| res.score)
+    butteraugli(ImgRef::new(&orig, w, h), ImgRef::new(&dist, w, h), &ButteraugliParams::default())
+        .map_or(99.0, |res| res.score)
 }
 
 struct Stat {
@@ -67,12 +65,18 @@ struct Stat {
 
 fn find_cards(cards_dir: &Path) -> Vec<String> {
     fn scan(base: &Path, dir: &Path, acc: &mut Vec<String>) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return; };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
         for entry in entries.flatten() {
             let p = entry.path();
             if p.is_dir() {
                 scan(base, &p, acc);
-            } else if p.extension().and_then(|s| s.to_str()).map_or(false, |ext| ext.eq_ignore_ascii_case("webp")) {
+            } else if p
+                .extension()
+                .and_then(|s| s.to_str())
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("webp"))
+            {
                 if let Ok(rel) = p.strip_prefix(base) {
                     acc.push(rel.with_extension("").to_string_lossy().replace('\\', "/"));
                 }
@@ -121,7 +125,7 @@ async fn main() {
 
             let start = Instant::now();
             let webp = encode_webp(w, h, orig, q);
-            total_ms += start.elapsed().as_secs_f64() * 1000.0;
+            total_ms = start.elapsed().as_secs_f64().mul_add(1000.0, total_ms);
             total_bytes += webp.len();
 
             let (dist, _, _) = webpx::decode_rgba(&webp).expect("failed to decode webp");
@@ -143,10 +147,8 @@ async fn main() {
         });
     }
 
-    let baseline_kb = stats
-        .iter()
-        .find(|s| (s.q - 85.0).abs() < f32::EPSILON)
-        .map_or(147.5, |s| s.avg_kb);
+    let baseline_kb =
+        stats.iter().find(|s| (s.q - 85.0).abs() < f32::EPSILON).map_or(147.5, |s| s.avg_kb);
 
     println!("\n  quality    avg score    max score     avg size    savings      encode    rating");
     println!("  {}", "─".repeat(82));
@@ -167,4 +169,3 @@ async fn main() {
         );
     }
 }
-
