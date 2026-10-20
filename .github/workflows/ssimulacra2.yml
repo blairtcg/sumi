@@ -1,0 +1,42 @@
+name: ssimulacra2
+
+on:
+  workflow_dispatch:
+    inputs:
+      cards_dir:
+        description: "Directory containing card assets (IMG_8376.webp & IMG_8377.webp)"
+        required: false
+        default: "assets"
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  ssimulacra2:
+    name: ssimulacra2 quality testing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install nightly --profile minimal
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build ssimulacra2
+        run: cargo +nightly build --release --bin ssimulacra2
+
+      - name: Run ssimulacra2
+        env:
+          CARDS_DIR: ${{ inputs.cards_dir || 'assets' }}
+          RUST_LOG: info
+        run: |
+          ./target/release/ssimulacra2 | tee ssimulacra2_output.txt
+          echo "### 🧚 ssimulacra2 results" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          cat ssimulacra2_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
