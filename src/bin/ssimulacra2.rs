@@ -1,6 +1,6 @@
-use std::{env, path::Path, sync::LazyLock, time::Instant};
+use std::{env, path::Path, time::Instant};
 
-use fast_ssim2::{LinearRgbImage, compute_ssimulacra2};
+use fast_ssim2::{PixelDescriptor, PixelSlice, compute_ssimulacra2};
 use rgb::RGB8;
 use sumi::renderer::CardCache;
 use webpx::{AlphaFilter, EncoderConfig, ImageHint, Preset, Unstoppable};
@@ -48,41 +48,30 @@ fn blend_bg(c: &[u8]) -> RGB8 {
     }
 }
 
-static SRGB_LUT: LazyLock<[f32; 256]> = LazyLock::new(|| {
-    let mut lut = [0.0f32; 256];
-    for (i, entry) in lut.iter_mut().enumerate() {
-        let v = i as f32 / 255.0;
-        *entry = if v <= 0.04045 {
-            v / 12.92
-        } else {
-            ((v + 0.055) / 1.055).powf(2.4)
-        };
-    }
-    lut
-});
-
-#[inline]
-fn srgb_to_linear(b: u8) -> f32 {
-    SRGB_LUT[b as usize]
-}
-
 fn score(w: u32, h: u32, orig_rgba: &[u8], dist_rgba: &[u8]) -> f64 {
-    let orig_linear: Vec<[f32; 3]> = orig_rgba
-        .chunks_exact(4)
-        .map(blend_bg)
-        .map(|c| [srgb_to_linear(c.r), srgb_to_linear(c.g), srgb_to_linear(c.b)])
-        .collect();
+    let mut orig_rgb = Vec::with_capacity((w * h * 3) as usize);
+    for chunk in orig_rgba.chunks_exact(4) {
+        let c = blend_bg(chunk);
+        orig_rgb.push(c.r);
+        orig_rgb.push(c.g);
+        orig_rgb.push(c.b);
+    }
 
-    let dist_linear: Vec<[f32; 3]> = dist_rgba
-        .chunks_exact(4)
-        .map(blend_bg)
-        .map(|c| [srgb_to_linear(c.r), srgb_to_linear(c.g), srgb_to_linear(c.b)])
-        .collect();
+    let mut dist_rgb = Vec::with_capacity((w * h * 3) as usize);
+    for chunk in dist_rgba.chunks_exact(4) {
+        let c = blend_bg(chunk);
+        dist_rgb.push(c.r);
+        dist_rgb.push(c.g);
+        dist_rgb.push(c.b);
+    }
 
-    let orig_img = LinearRgbImage::new(orig_linear, w as usize, h as usize);
-    let dist_img = LinearRgbImage::new(dist_linear, w as usize, h as usize);
+    let stride = (w * 3) as usize;
+    let orig_slice = PixelSlice::new(&orig_rgb, w, h, stride, PixelDescriptor::RGB8_SRGB)
+        .expect("failed to create orig PixelSlice");
+    let dist_slice = PixelSlice::new(&dist_rgb, w, h, stride, PixelDescriptor::RGB8_SRGB)
+        .expect("failed to create dist PixelSlice");
 
-    compute_ssimulacra2(orig_img, dist_img).unwrap_or(0.0)
+    compute_ssimulacra2(&orig_slice, &dist_slice).unwrap_or(0.0)
 }
 
 struct Stat {
