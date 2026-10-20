@@ -106,13 +106,14 @@ async fn main() {
         let mut total_ms = 0.0;
 
         for name in &CARDS {
-            let card = cache.get(name).await.unwrap_or_else(|e| panic!("failed to load {name}: {e}"));
+            let card =
+                cache.get(name).await.unwrap_or_else(|e| panic!("failed to load {name}: {e}"));
             let (w, h) = (card.size.width, card.size.height);
             let orig = &card.pixels;
 
             let start = Instant::now();
             let webp = encode_webp(w, h, orig, q);
-            total_ms += start.elapsed().as_secs_f64() * 1000.0;
+            total_ms = start.elapsed().as_secs_f64().mul_add(1000.0, total_ms);
             total_bytes += webp.len();
 
             let (dist, _, _) = webpx::decode_rgba(&webp).expect("failed to decode webp");
@@ -134,10 +135,8 @@ async fn main() {
         });
     }
 
-    let baseline_kb = stats
-        .iter()
-        .find(|s| (s.q - 85.0).abs() < f32::EPSILON)
-        .map_or(147.5, |s| s.avg_kb);
+    let baseline_kb =
+        stats.iter().find(|s| (s.q - 85.0).abs() < f32::EPSILON).map_or(147.5, |s| s.avg_kb);
 
     println!("\n  quality    avg score    min score     avg size    savings      encode    rating");
     println!("  {}", "─".repeat(82));
