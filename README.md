@@ -38,7 +38,7 @@ Download and run rustup-init.exe from <https://rustup.rs/>
 | **OS**      | Ubuntu 24.04.5 LTS                       |
 | **Payload** | 1490×1080 WebP (~391 KB / response)      |
 
-### Results (1)
+#### Results
 
 | Profile                   | Duration | RPS       | Throughput | Avg Latency | Stdev     | Max Latency |
 | :------------------------ | :------- | :-------- | :--------- | :---------- | :-------- | :---------- |
@@ -76,11 +76,7 @@ Instead of manual testing for webp quality settings, we use [Butteraugli](https:
 
 Butteraugli calculates the difference of two images and scores the differences of them on whatever the human eye can notice (aka shitty compression artifacts etc).
 
-### method(0)
-
-In our webp encoder settings, the use of `method(0)` is to keep drops rendering in ~50 ms which inevitably will result in noticeable artifacts in our cards (if you zoom in). This removes possibility for full webp lossless capability to trade for speed.
-
-### Results (2)
+### Results
 
 ```text
   quality    avg score    max score     avg size    savings      encode    rating
@@ -97,35 +93,34 @@ In our webp encoder settings, the use of `method(0)` is to keep drops rendering 
 
 ### Q 80
 
-At Q 80.0, the worst case card score is 4.632, lower than Q85 (`4.757`) and Q90 (`4.761`) (probably due to random cards but this has been tested repeatedly and the usual winner is either Q 78 / 80 which in this case we settle to Q 80 to maximize quality)
+At Q 80.0, the worst case card score is 4.632, lower than Q85 (`4.757`) and Q90 (`4.761`) (probably due to random cards but this has been tested repeatedly and the usual winner is either Q **78** or **80** which in this case we settle to Q **80** to _maximize_ quality)
 
 Cuts ~24.4 KB per card (~49 KB per our 2 card drop)
 
 Below Q78, distortion will increase over `3.85+` where all the blurriness becomes noticeable
 
-<details>
-  <summary>ssimulacra2</summary>
-
-[ssimulacra2](https://github.com/cloudinary/ssimulacra2), the more modern alternative of butteraugli provides similar results as well. You can see the main differences of the 2 tools explained nicely by _Jon Sneyer_ (the creator of ssimu2) in [Cloudinary's blog](https://cloudinary.com/blog/detecting_the_psychovisual_impact_of_compression_related_artifacts_using_ssimulacra#butteraugli)
-
-### Results (3)
-
-Here, again the most optimal quality setting would be either Q 78 / 80
-
-```text
-  quality    avg score    min score     avg size    savings      encode    rating
-  ──────────────────────────────────────────────────────────────────────────────────────
-  Q 65.0       74.794       74.220     131.1 KB    +33.1%     21.96 ms    sweet spot
-  Q 70.0       75.868       75.432     134.6 KB    +31.3%     20.29 ms    sweet spot
-  Q 75.0       76.744       76.469     141.0 KB    +28.1%     20.90 ms    sweet spot
-  Q 78.0       78.814       78.647     151.0 KB    +22.9%     21.93 ms    great
-  Q 80.0       79.931       79.906     164.4 KB    +16.1%     22.55 ms    great
-  Q 82.0       81.110       81.011     176.1 KB    +10.2%     23.27 ms    great
-  Q 85.0       82.703       82.461     196.0 KB     +0.0%     23.18 ms    great
-  Q 90.0       84.954       84.538     160.8 KB    +18.0%     27.18 ms    great
-```
-
-</details>
+> [!NOTE]
+> <details>
+> <summary><b>ssimulacra2</b></summary>
+>
+> You could also use [ssimulacra2](https://github.com/cloudinary/ssimulacra2), the more modern alternative of butteraugli but it provides similar results as well. You can see the main differences of the 2 tools explained nicely by _Jon Sneyer_ (the creator of ssimu2) in [Cloudinary's blog](https://cloudinary.com/blog/detecting_the_psychovisual_impact_of_compression_related_artifacts_using_ssimulacra#butteraugli)
+>
+> Here, again the most optimal quality setting would be either Q **78** or **80**
+>
+> ```text
+>  quality    avg score    min score     avg size    savings      encode    rating
+>  ──────────────────────────────────────────────────────────────────────────────────────
+>  Q 65.0       74.794       74.220     131.1 KB    +33.1%     21.96 ms    sweet spot
+>  Q 70.0       75.868       75.432     134.6 KB    +31.3%     20.29 ms    sweet spot
+>  Q 75.0       76.744       76.469     141.0 KB    +28.1%     20.90 ms    sweet spot
+>  Q 78.0       78.814       78.647     151.0 KB    +22.9%     21.93 ms    great
+>  Q 80.0       79.931       79.906     164.4 KB    +16.1%     22.55 ms    great
+>  Q 82.0       81.110       81.011     176.1 KB    +10.2%     23.27 ms    great
+>  Q 85.0       82.703       82.461     196.0 KB     +0.0%     23.18 ms    great
+>  Q 90.0       84.954       84.538     160.8 KB    +18.0%     27.18 ms    great
+> ```
+>
+> </details>
 
 ## Run butteraugli
 
