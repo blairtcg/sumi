@@ -3,7 +3,7 @@
 
   <h2>Image renderer for @Blair!</h2>
 
-  ![Last commit](https://www.shieldcn.dev/github/last-commit/blairtcg/sumi.svg?variant=secondary&size=sm&font=space-grotesk&color=bde0fe)
+![Last commit](https://www.shieldcn.dev/github/last-commit/blairtcg/sumi.svg?variant=secondary&size=sm&font=space-grotesk&color=bde0fe)
 ![Commits](https://www.shieldcn.dev/github/commits/blairtcg/sumi.svg?variant=secondary&size=sm&font=space-grotesk&color=a8e6cf&labelColor=a8e6cf)
 ![Release](https://www.shieldcn.dev/github/release/blairtcg/sumi.svg?size=sm&font=space-grotesk&color=ffb5a2&labelColor=ffb5a2) ![Rust version](https://shieldcn.dev/badge/rust%20v1.87-fde293.svg?font=space-grotesk&logo=rust)
 
@@ -31,19 +31,19 @@ Download and run rustup-init.exe from <https://rustup.rs/>
 
 ## Benches
 
-| Component | Specification |
-| :--- | :--- |
-| **CPU** | AMD EPYC 9V74 (2 Cores / 4 vCPUs, Zen 4) |
-| **RAM** | 15 GiB |
-| **OS** | Ubuntu 24.04.5 LTS |
-| **Payload** | 1490×1080 WebP (~391 KB / response) |
+| Component   | Specification                            |
+| :---------- | :--------------------------------------- |
+| **CPU**     | AMD EPYC 9V74 (2 Cores / 4 vCPUs, Zen 4) |
+| **RAM**     | 15 GiB                                   |
+| **OS**      | Ubuntu 24.04.5 LTS                       |
+| **Payload** | 1490×1080 WebP (~391 KB / response)      |
 
-### Results
+### Results (1)
 
-| Profile | Duration | RPS | Throughput | Avg Latency | Stdev | Max Latency |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **4 Threads / 4 Conns** | 10s | **41.58** | 16.27 MB/s | 95.96 ms | 7.80 ms | 173.38 ms |
-| **4 Threads / 100 Conns** | 30s | **42.10** | 16.45 MB/s | 2.28 s | 358.28 ms | 2.45 s |
+| Profile                   | Duration | RPS       | Throughput | Avg Latency | Stdev     | Max Latency |
+| :------------------------ | :------- | :-------- | :--------- | :---------- | :-------- | :---------- |
+| **4 Threads / 4 Conns**   | 10s      | **41.58** | 16.27 MB/s | 95.96 ms    | 7.80 ms   | 173.38 ms   |
+| **4 Threads / 100 Conns** | 30s      | **42.10** | 16.45 MB/s | 2.28 s      | 358.28 ms | 2.45 s      |
 
 <details>
 <summary>raw wrk</summary>
@@ -67,20 +67,21 @@ Running 30s test @ http://localhost:6767
 Requests/sec:     42.10
 Transfer/sec:     16.45MB
 ```
+
 </details>
 
 ## butteraugli
- 
-Instead of manual testing for webp quality settings, we use [Butteraugli](https://github.com/google/butteraugli) the psychovisual estimation tool designed by *Jyrki Alakuijala* (creator of Zopfli at Google!)
+
+Instead of manual testing for webp quality settings, we use [Butteraugli](https://github.com/google/butteraugli) the psychovisual estimation tool designed by _Jyrki Alakuijala_ (creator of Zopfli at Google!)
 
 Butteraugli calculates the difference of two images and scores the differences of them on whatever the human eye can notice (aka shitty compression artifacts etc).
- 
+
 ### method(0)
 
 In our webp encoder settings, the use of `method(0)` is to keep drops rendering in ~50 ms which inevitably will result in noticeable artifacts in our cards (if you zoom in). This removes possibility for full webp lossless capability to trade for speed.
- 
-### Results
- 
+
+### Results (2)
+
 ```text
   quality    avg score    max score     avg size    savings      encode    rating
   ─────────────────────────────────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ In our webp encoder settings, the use of `method(0)` is to keep drops rendering 
   Q 85.0        2.807        4.757     151.8 KB     +0.0%     26.90 ms    elysium
   Q 90.0        2.675        4.761     137.2 KB     +9.6%     30.33 ms    elysium
 ```
- 
+
 ### Q 80
 
 At Q 80.0, the worst case card score is 4.632, lower than Q85 (`4.757`) and Q90 (`4.761`) (probably due to random cards but this has been tested repeatedly and the usual winner is either Q 78 / 80 which in this case we settle to Q 80 to maximize quality)
@@ -105,15 +106,15 @@ Below Q78, distortion will increase over `3.85+` where all the blurriness become
 <details>
   <summary>ssimulacra2</summary>
 
-[ssimulacra2](https://github.com/cloudinary/ssimulacra2), the more modern alternative of butteraugli provides similar results as well. You can see the main differences of the 2 tools explained nicely by *Jon Sneyer* (the creator of ssimu2) in [Cloudinary's blog](https://cloudinary.com/blog/detecting_the_psychovisual_impact_of_compression_related_artifacts_using_ssimulacra#butteraugli )
+[ssimulacra2](https://github.com/cloudinary/ssimulacra2), the more modern alternative of butteraugli provides similar results as well. You can see the main differences of the 2 tools explained nicely by _Jon Sneyer_ (the creator of ssimu2) in [Cloudinary's blog](https://cloudinary.com/blog/detecting_the_psychovisual_impact_of_compression_related_artifacts_using_ssimulacra#butteraugli)
 
-### Results
+### Results (3)
 
 Here, again the most optimal quality setting would be either Q 78 / 80
 
 ```text
   quality    avg score    min score     avg size    savings      encode    rating
-  ──────────────────────────────────────────────────────────────────────────────────
+  ──────────────────────────────────────────────────────────────────────────────────────
   Q 65.0       74.794       74.220     131.1 KB    +33.1%     21.96 ms    sweet spot
   Q 70.0       75.868       75.432     134.6 KB    +31.3%     20.29 ms    sweet spot
   Q 75.0       76.744       76.469     141.0 KB    +28.1%     20.90 ms    sweet spot
@@ -123,10 +124,11 @@ Here, again the most optimal quality setting would be either Q 78 / 80
   Q 85.0       82.703       82.461     196.0 KB     +0.0%     23.18 ms    great
   Q 90.0       84.954       84.538     160.8 KB    +18.0%     27.18 ms    great
 ```
+
 </details>
- 
+
 ## Run butteraugli
- 
+
 ```powershell
 just butter
 ```
