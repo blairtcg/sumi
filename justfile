@@ -9,8 +9,11 @@ build:
 run:
     cargo run --release
 
-butter:
-    cargo run --release --bin butteraugli
+butteraugli:
+    cargo run --release --bin butteraugli --features butteraugli
+ 
+ssimulacra2:
+    cargo run --release --bin ssimulacra2 --features ssimulacra2
 
 fmt:
     cargo fmt --all
