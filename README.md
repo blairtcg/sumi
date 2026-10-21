@@ -122,10 +122,14 @@ Below Q78, distortion will increase over `3.85+` where all the blurriness become
 >
 > </details>
 
-## Run butteraugli
+## Run butteraugli/ssimu2
 
 ```powershell
 just butter
+```
+
+```powershell
+just simmulacra2
 ```
 
 Make sure to set correct directory to cards
