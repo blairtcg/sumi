@@ -38,7 +38,7 @@ Download and run rustup-init.exe from <https://rustup.rs/>
 | **OS**      | Ubuntu 24.04.5 LTS                       |
 | **Payload** | 1490×1080 WebP (~391 KB / response)      |
 
-#### Results
+### Results [1]
 
 | Profile                   | Duration | RPS       | Throughput | Avg Latency | Stdev     | Max Latency |
 | :------------------------ | :------- | :-------- | :--------- | :---------- | :-------- | :---------- |
@@ -76,7 +76,7 @@ Instead of manual testing for webp quality settings, we use [Butteraugli](https:
 
 Butteraugli calculates the difference of two images and scores the differences of them on whatever the human eye can notice (aka shitty compression artifacts etc).
 
-### Results
+### Results [2]
 
 ```text
   quality    avg score    max score     avg size    savings      encode    rating
