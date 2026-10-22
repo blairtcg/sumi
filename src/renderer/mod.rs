@@ -18,7 +18,12 @@ pub use cache::CardCache;
 use canvas::create_drop_image;
 pub use error::{RenderError, Result};
 use print::init_font;
-use tokio::{sync::Semaphore, task, time::{timeout, timeout_at}, try_join};
+use tokio::{
+    sync::Semaphore,
+    task,
+    time::{Instant as TokioInstant, timeout, timeout_at},
+    try_join,
+};
 
 use crate::metrics::Metrics;
 
@@ -75,7 +80,7 @@ impl CardRenderer {
     }
 
     // creates the final image.
-    // if an image cant render your drop in 5 seconds, Too bad!
+    // if we cant render your drop in 5 seconds, Too bad!
     // in blair-go side your cooldown wont get used. users can just try dropping again.
     #[tracing::instrument(skip(self), err)]
     pub async fn render_drop(
@@ -85,14 +90,14 @@ impl CardRenderer {
         left_print_number: PrintNumber,
         right_print_number: PrintNumber,
     ) -> Result<Bytes> {
-        let deadline = Instant::now() + Duration::from_secs(TIMEOUT_SECONDS);
+        let deadline = TokioInstant::now() + Duration::from_secs(TIMEOUT_SECONDS);
 
         let permit = timeout_at(deadline, self.cpu_semaphore.clone().acquire_owned())
             .await
             .map_err(|_| RenderError::Timeout)?
             .map_err(|_| RenderError::Internal("cpu semaphore died".to_string()))?;
 
-        let remaining = deadline.saturating_duration_since(Instant::now());
+        let remaining = deadline.saturating_duration_since(TokioInstant::now());
 
         let (left_card, right_card) = timeout(
             remaining,
@@ -106,7 +111,7 @@ impl CardRenderer {
         .await
         .map_err(|_| RenderError::Timeout)??;
 
-        let remaining = deadline.saturating_duration_since(Instant::now());
+        let remaining = deadline.saturating_duration_since(TokioInstant::now());
 
         let result = timeout(
             remaining,
@@ -124,7 +129,8 @@ impl CardRenderer {
             }),
         )
         .await
-        .map_err(|_| RenderError::Timeout)??;
+        .map_err(|_| RenderError::Timeout)?
+        .map_err(|e| RenderError::Internal(format!("task failed: {e}")))??;
 
         Ok(result)
     }
