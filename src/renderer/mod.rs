@@ -99,15 +99,9 @@ impl CardRenderer {
 
         let remaining = deadline.saturating_duration_since(TokioInstant::now());
 
-        let (left_card, right_card) = timeout(
-            remaining,
-            async {
-                try_join!(
-                    self.card_cache.get(left_card_name),
-                    self.card_cache.get(right_card_name)
-                )
-            },
-        )
+        let (left_card, right_card) = timeout(remaining, async {
+            try_join!(self.card_cache.get(left_card_name), self.card_cache.get(right_card_name))
+        })
         .await
         .map_err(|_| RenderError::Timeout)??;
 
