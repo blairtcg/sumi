@@ -1,50 +1,35 @@
-// due to static rng cache hit rates we will use simple read only cache system
-// pas startup kita warming memory sampe deket limit 2 gb terus freeze
-// di runtime klo hantam hit kita serve pakai dashmap sama ahash dibanding siphash lebih cepet.
-// klo miss kita decode dr disk tapi ga usah masukin memory biar minimal instruksi
-
 use std::{
     fmt::{Debug, Formatter, Result as FmtResult},
     fs,
-    num::NonZero,
     path::Path,
-    sync::{
-        Arc,
-        atomic::{AtomicU64, AtomicUsize, Ordering},
-    },
-    thread,
+    sync::Arc,
 };
 
 use ahash::{HashMap, RandomState};
-use dashmap::DashMap;
-use tokio::{
-    spawn,
-    task::{self, JoinSet},
-};
 
 use crate::renderer::{
     error::{RenderError, Result},
     pixels::{RawCardImage, Size},
 };
 
-const MAX_CACHE_SIZE_KB: usize = 2_000_000; // -- 2 gb limit in kilobyte
-
-// hold cached image and list of file here
+// a tiny lazy card index
+// we have decided to just disable our cache.
+// we will likely make use of our previous moka implementation
+// and use the LRU cache system for both binfo 
+// and potentially bdrop (though it gets vlittle value from LRU)
 pub struct CardCache {
-    memory: Arc<DashMap<Arc<str>, Arc<RawCardImage>, RandomState>>,
-    file_index: Arc<HashMap<Arc<str>, Arc<Path>>>,
+    file_index: Arc<HashMap<Arc<str>, Arc<Path>, RandomState>>,
 }
 
 impl Debug for CardCache {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("CardCache")
             .field("file_index_len", &self.file_index.len())
-            .finish_non_exhaustive() // intentional for hashmap
+            .finish_non_exhaustive()
     }
 }
 
 // helper to read and decode a webp card from disk.
-// it'll be shared in runtime cache miss and prewarm.
 fn decode_card_from_disk(path: &Path) -> Result<(Arc<RawCardImage>, u64)> {
     let file_bytes = fs::read(path).map_err(|e| {
         RenderError::Internal(format!("failed to open file '{}': {e}", path.display()))
@@ -96,23 +81,24 @@ impl CardCache {
             ));
         }
 
-        Ok(Self {
-            memory: Arc::new(DashMap::with_hasher(RandomState::new())),
-            file_index: Arc::new(file_index),
-        })
+        Ok(Self { file_index: Arc::new(file_index) })
     }
 
     // makes a list of all image files in the folder
     // we check this list first so we dont waste time looking for missing files.
-    // this also introduces breaking change as hashmap now saves cards as e.g. genshin/fischl_1
-    fn build_card_list(cards_dir: &Path) -> HashMap<Arc<str>, Arc<Path>> {
-        fn find_card(base_dir: &Path, dir: &Path, index: &mut HashMap<Arc<str>, Arc<Path>>) {
+    fn build_card_list(cards_dir: &Path) -> HashMap<Arc<str>, Arc<Path>, RandomState> {
+        fn find_card(
+            base_dir: &Path,
+            dir: &Path,
+            index: &mut HashMap<Arc<str>, Arc<Path>, RandomState>,
+        ) {
             let Ok(entries) = fs::read_dir(dir) else {
                 return;
             };
 
             for entry in entries.flatten() {
                 let path = entry.path();
+
                 if path.is_dir() {
                     find_card(base_dir, &path, index);
                     continue;
@@ -143,89 +129,23 @@ impl CardCache {
         index
     }
 
-    // bake the entire cache up to the memory limit
+    // prewarm is now intentionally disabled!
+    // blair's drop cmd is random enough that freezing a huge decoded cache
+    // costs more than it gives back esp since its just a static cache hit rate
     pub fn start_prewarm(&self) {
-        if self.file_index.is_empty() {
-            return;
-        }
-
-        let file_index_clone = self.file_index.clone();
-        let memory = self.memory.clone();
-
-        spawn(async move {
-            tracing::info!("baking memory cache (dashmap/ahash)..");
-            let warmed = Arc::new(AtomicUsize::new(0));
-            let warmed_kb = Arc::new(AtomicU64::new(0));
-            let warmed_disk_bytes = Arc::new(AtomicU64::new(0));
-            let cores = thread::available_parallelism().map_or(8, NonZero::get);
-            let concurrent_tasks = cores * 2;
-            let mut join_set = JoinSet::new();
-
-            for (name, path) in file_index_clone.iter() {
-                // check if we reached 90% cap before spawning more work
-                let current_kb = warmed_kb.load(Ordering::Relaxed);
-                if current_kb > ((MAX_CACHE_SIZE_KB as u64) * 9 / 10) {
-                    tracing::info!("stopped baking (reached memory cap)");
-                    break;
-                }
-
-                if join_set.len() >= concurrent_tasks {
-                    join_set.join_next().await;
-                }
-
-                let name = name.clone();
-                let path = path.clone();
-                let memory = memory.clone();
-                let warmed = warmed.clone();
-                let warmed_kb = warmed_kb.clone();
-                let warmed_disk_bytes = warmed_disk_bytes.clone();
-
-                join_set.spawn(async move {
-                    let result = task::spawn_blocking(move || decode_card_from_disk(&path).ok())
-                        .await
-                        .unwrap_or(None);
-
-                    if let Some((arc_img, file_len)) = result {
-                        let size_kb = arc_img.pixels.len() / 1024;
-                        memory.insert(name, arc_img);
-                        warmed.fetch_add(1, Ordering::Relaxed);
-                        warmed_kb.fetch_add(size_kb as u64, Ordering::Relaxed);
-                        warmed_disk_bytes.fetch_add(file_len, Ordering::Relaxed);
-                    }
-                });
-            }
-
-            while join_set.join_next().await.is_some() {}
-
-            let total_disk_bytes = warmed_disk_bytes.load(Ordering::Relaxed);
-
-            let mb = total_disk_bytes as f64 / 1_048_576.0;
-
-            tracing::info!(
-                "finished baking {} cards [{:.2} mb]",
-                warmed.load(Ordering::Relaxed),
-                mb
-            );
-        });
+        tracing::info!("! using lazy decode");
     }
 
     // gets decoded card image from cache memory map.
-    // miss baca dari disk langsung (juga ga dimasukin ke mem map, liat line 4)
+    // miss loads from disk directly
     pub async fn get(&self, name: &str) -> Result<Arc<RawCardImage>> {
-        if let Some(img) = self.memory.get(name) {
-            tracing::trace!("cache hit for {}", name);
-            return Ok(img.value().clone());
-        }
-
-        tracing::trace!("cache miss for {}", name);
-
         let path = self
             .file_index
             .get(name)
             .cloned()
             .ok_or_else(|| RenderError::CardNotFound(name.to_string()))?;
 
-        let (arc_img, _) = task::spawn_blocking(move || decode_card_from_disk(&path))
+        let (arc_img, _) = tokio::task::spawn_blocking(move || decode_card_from_disk(&path))
             .await
             .map_err(|e| RenderError::Internal(format!("task panicked: {e}")))??;
 
