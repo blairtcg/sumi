@@ -107,6 +107,7 @@ Below Q78, distortion will increase over `3.85+` where all the blurriness become
 >
 > Here, again the most optimal quality setting would be either Q **78** or **80**
 >
+> **Results (3)**
 > ```text
 >  quality    avg score    min score     avg size    savings      encode    rating
 >  ──────────────────────────────────────────────────────────────────────────────────────
