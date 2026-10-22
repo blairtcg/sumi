@@ -18,7 +18,7 @@ pub use cache::CardCache;
 use canvas::create_drop_image;
 pub use error::{RenderError, Result};
 use print::init_font;
-use tokio::{sync::Semaphore, task, time::timeout, try_join};
+use tokio::{sync::Semaphore, task, time::{timeout, timeout_at}, try_join};
 
 use crate::metrics::Metrics;
 
@@ -85,40 +85,47 @@ impl CardRenderer {
         left_print_number: PrintNumber,
         right_print_number: PrintNumber,
     ) -> Result<Bytes> {
-        let render_future = async {
-            let start = Instant::now();
-            let permit = self
-                .cpu_semaphore
-                .clone()
-                .acquire_owned()
-                .await
-                .map_err(|_| RenderError::Internal("cpu semaphore died".to_string()))?;
+        let deadline = Instant::now() + Duration::from_secs(TIMEOUT_SECONDS);
 
-            if start.elapsed() >= Duration::from_secs(5) {
-                return Err(RenderError::Timeout);
-            }
-
-            let start_fetch = Instant::now();
-            let (left_card, right_card) = try_join!(
-                self.card_cache.get(left_card_name),
-                self.card_cache.get(right_card_name)
-            )?;
-            let fetch_elapsed = start_fetch.elapsed();
-            tracing::debug!("fetching cards took {:.3}ms", fetch_elapsed.as_secs_f64() * 1000.0);
-
-            // move the heavy image work to a background thread
-            let result = task::spawn_blocking(move || {
-                let _lock = permit;
-                create_drop_image(&left_card, &right_card, left_print_number, right_print_number)
-            })
-            .await
-            .map_err(|e| RenderError::Internal(format!("task failed: {e}")))??;
-
-            Ok(result)
-        };
-
-        timeout(Duration::from_secs(TIMEOUT_SECONDS), render_future)
+        let permit = timeout_at(deadline, self.cpu_semaphore.clone().acquire_owned())
             .await
             .map_err(|_| RenderError::Timeout)?
+            .map_err(|_| RenderError::Internal("cpu semaphore died".to_string()))?;
+
+        let remaining = deadline.saturating_duration_since(Instant::now());
+
+        let (left_card, right_card) = timeout(
+            remaining,
+            async {
+                try_join!(
+                    self.card_cache.get(left_card_name),
+                    self.card_cache.get(right_card_name)
+                )
+            },
+        )
+        .await
+        .map_err(|_| RenderError::Timeout)??;
+
+        let remaining = deadline.saturating_duration_since(Instant::now());
+
+        let result = timeout(
+            remaining,
+            task::spawn_blocking({
+                let permit = permit;
+                move || {
+                    let _lock = permit;
+                    create_drop_image(
+                        &left_card,
+                        &right_card,
+                        left_print_number,
+                        right_print_number,
+                    )
+                }
+            }),
+        )
+        .await
+        .map_err(|_| RenderError::Timeout)??;
+
+        Ok(result)
     }
 }
