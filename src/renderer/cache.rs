@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use ahash::{HashMap, RandomState};
+use ahash::HashMap;
 
 use crate::renderer::{
     error::{RenderError, Result},
@@ -18,7 +18,7 @@ use crate::renderer::{
 // and use the LRU cache system for both binfo 
 // and potentially bdrop (though it gets vlittle value from LRU)
 pub struct CardCache {
-    file_index: Arc<HashMap<Arc<str>, Arc<Path>, RandomState>>,
+    file_index: Arc<HashMap<Arc<str>, Arc<Path>>>,
 }
 
 impl Debug for CardCache {
@@ -86,12 +86,8 @@ impl CardCache {
 
     // makes a list of all image files in the folder
     // we check this list first so we dont waste time looking for missing files.
-    fn build_card_list(cards_dir: &Path) -> HashMap<Arc<str>, Arc<Path>, RandomState> {
-        fn find_card(
-            base_dir: &Path,
-            dir: &Path,
-            index: &mut HashMap<Arc<str>, Arc<Path>, RandomState>,
-        ) {
+    fn build_card_list(cards_dir: &Path) -> HashMap<Arc<str>, Arc<Path>> {
+        fn find_card(base_dir: &Path, dir: &Path, index: &mut HashMap<Arc<str>, Arc<Path>>) {
             let Ok(entries) = fs::read_dir(dir) else {
                 return;
             };
