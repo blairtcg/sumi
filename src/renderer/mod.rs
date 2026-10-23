@@ -83,6 +83,7 @@ impl CardRenderer {
     // if we cant render your drop in 5 seconds, Too bad!
     // in blair-go side your cooldown wont get used. users can just try dropping again.
     #[tracing::instrument(skip(self), err)]
+    #[allow(clippy::significant_drop_tightening)]
     pub async fn render_drop(
         &self,
         left_card_name: &str,
