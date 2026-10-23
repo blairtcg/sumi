@@ -15,7 +15,7 @@ use crate::renderer::{
 // a tiny lazy card index
 // we have decided to just disable our cache.
 // we will likely make use of our previous moka implementation
-// and use the LRU cache system for both binfo 
+// and use the LRU cache system for both binfo
 // and potentially bdrop (though it gets vlittle value from LRU)
 pub struct CardCache {
     file_index: Arc<HashMap<Arc<str>, Arc<Path>>>,
