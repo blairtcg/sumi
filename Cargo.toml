@@ -19,7 +19,7 @@
   rgb                = { version = "0.8.53", optional = true }
   serde              = { version = "1.0.229", features = ["serde_derive"], default-features = false }
   serde_json         = "1.0.154"
-  tokio              = { version = "1.54.0", features = ["fs", "rt-multi-thread", "signal"] }
+  tokio              = { version = "1.54.1", features = ["fs", "rt-multi-thread", "signal"] }
   tracing            = { version = "0.1.44", features = ["attributes"], default-features = false }
   tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"], default-features = false }
   webpx              = { version = "0.4.0", features = ["decode", "encode"], default-features = false }
