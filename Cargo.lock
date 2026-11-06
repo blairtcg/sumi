@@ -232,9 +232,9 @@ dependencies = [
 
 [[package]]
 name = "fast-ssim2"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50973c465e3bcf20814e7087bb85bd37eaeaa463072a5d32fb66499003ee6aba"
+checksum = "e1f3216821c49c3988daa5f35451152559093e7b55c065ec3240ec60a11cc61b"
 dependencies = [
  "archmage",
  "bytemuck",
