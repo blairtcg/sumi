@@ -41,6 +41,10 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self::from_env().expect("failed to load default config")
+        Self {
+            cards_dir: PathBuf::from("assets/cards"),
+            port: 8888,
+            host: "0.0.0.0".to_string(),
+        }
     }
 }
