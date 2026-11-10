@@ -9,7 +9,7 @@ use ahash::HashMap;
 
 use crate::renderer::{
     error::{RenderError, Result},
-    pixels::{RawCardImage, Size},
+    pixels::{CARD_HEIGHT, CARD_WIDTH, RawCardImage, Size},
 };
 
 // a tiny lazy card index
@@ -30,7 +30,7 @@ impl Debug for CardCache {
 }
 
 // helper to read and decode a webp card from disk.
-fn decode_card_from_disk(path: &Path) -> Result<(Arc<RawCardImage>, u64)> {
+fn decode_card_from_disk(path: &Path) -> Result<Arc<RawCardImage>> {
     let file_bytes = fs::read(path).map_err(|e| {
         RenderError::Internal(format!("failed to open file '{}': {e}", path.display()))
     })?;
@@ -39,8 +39,6 @@ fn decode_card_from_disk(path: &Path) -> Result<(Arc<RawCardImage>, u64)> {
         tracing::warn!("rejected '{}' (only webp supported)", path.display());
         return Err(RenderError::Internal(format!("'{}' is not a webp", path.display())));
     }
-
-    let file_len = u64::try_from(file_bytes.len()).unwrap_or(u64::MAX);
 
     let (mut pixels, width, height) = webpx::decode_rgba(&file_bytes).map_err(|e| {
         RenderError::Internal(format!("failed to decode webp for '{}': {e:?}", path.display()))
@@ -56,9 +54,9 @@ fn decode_card_from_disk(path: &Path) -> Result<(Arc<RawCardImage>, u64)> {
         }
     }
 
-    if width != 725 || height != 1040 {
+    if width != CARD_WIDTH || height != CARD_HEIGHT {
         tracing::warn!(
-            "card '{}' dimension is {}x{} (expected 725x1040)",
+            "card '{}' dimension is {}x{} (expected {CARD_WIDTH}x{CARD_HEIGHT})",
             path.display(),
             width,
             height
@@ -67,7 +65,7 @@ fn decode_card_from_disk(path: &Path) -> Result<(Arc<RawCardImage>, u64)> {
 
     let image = RawCardImage { size: Size::new(width, height), pixels: pixels.into_boxed_slice() };
 
-    Ok((Arc::new(image), file_len))
+    Ok(Arc::new(image))
 }
 
 impl CardCache {
@@ -125,15 +123,8 @@ impl CardCache {
         index
     }
 
-    // prewarm is now intentionally disabled!
-    // blair's drop cmd is random enough that freezing a huge decoded cache
-    // costs more than it gives back esp since its just a static cache hit rate
-    pub fn start_prewarm(&self) {
-        tracing::info!("! using lazy decode");
-    }
-
-    // gets decoded card image from cache memory map.
-    // miss loads from disk directly
+    // gets decoded card image from cache index.
+    // loads and decodes from disk directly
     pub async fn get(&self, name: &str) -> Result<Arc<RawCardImage>> {
         let path = self
             .file_index
@@ -141,10 +132,8 @@ impl CardCache {
             .cloned()
             .ok_or_else(|| RenderError::CardNotFound(name.to_string()))?;
 
-        let (arc_img, _) = tokio::task::spawn_blocking(move || decode_card_from_disk(&path))
+        tokio::task::spawn_blocking(move || decode_card_from_disk(&path))
             .await
-            .map_err(|e| RenderError::Internal(format!("task panicked: {e}")))??;
-
-        Ok(arc_img)
+            .map_err(|e| RenderError::Internal(format!("task panicked: {e}")))?
     }
 }
