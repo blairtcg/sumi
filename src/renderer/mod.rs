@@ -29,15 +29,18 @@ use crate::metrics::Metrics;
 
 const TIMEOUT_SECONDS: u64 = 10;
 
+// this is guaranteed to format into at most 4 bytes (#, plus 1-3 digits)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PrintNumber(u16);
 
 impl PrintNumber {
+    /// creates a new print number, clamping to the 1-999 range.
     #[inline]
     pub fn new(val: u32) -> Self {
         Self(val.clamp(1, 999) as u16)
     }
 
+    /// returns the raw u16 value of the print number.
     #[inline]
     pub const fn value(self) -> u16 {
         self.0
