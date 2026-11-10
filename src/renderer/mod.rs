@@ -83,7 +83,7 @@ impl CardRenderer {
     }
 
     // creates the final image.
-    // if we cant render your drop in 5 seconds, Too bad!
+    // if we cant render your drop in 10 seconds (Shutty timeout ngl), Too bad!
     // in blair-go side your cooldown wont get used. users can just try dropping again.
     #[tracing::instrument(skip(self), err)]
     #[allow(clippy::significant_drop_tightening)]
