@@ -59,10 +59,7 @@ async fn main() {
     fmt().with_env_filter(filter).event_format(LogFormatter).init();
 
     let welcomer = include_str!("ascii.txt");
-    println!();
-    for line in welcomer.lines() {
-        println!("{COLOR_SUMI}{line}{RESET}");
-    }
+    println!("\n{COLOR_SUMI}{welcomer}{RESET}");
 
     let cfg = Config::from_env().unwrap_or_else(|e| {
         tracing::error!("failed to load config..\n      reason: {}", e);
