@@ -12,12 +12,14 @@ use crate::renderer::RenderError;
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
+    BadRequest(String),
     Render { err: RenderError, left: String, right: String },
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
+            Self::BadRequest(msg) => write!(f, "bad request: {msg}"),
             Self::Render { err, left, right } => {
                 write!(f, "render error (left: {left}, right: {right}): {err}")
             }
@@ -28,6 +30,7 @@ impl Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::BadRequest(_) => None,
             Self::Render { err, .. } => Some(err),
         }
     }
@@ -40,6 +43,10 @@ impl IntoResponse for Error {
     #[inline(never)]
     fn into_response(self) -> Response {
         let (status, error_msg) = match self {
+            Self::BadRequest(msg) => {
+                tracing::debug!("bad request rejected: {msg}");
+                (StatusCode::BAD_REQUEST, msg)
+            }
             Self::Render { err, left, right } => {
                 let (status, msg) = match &err {
                     RenderError::CardNotFound(name) => {
