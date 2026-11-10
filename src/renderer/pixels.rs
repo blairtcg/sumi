@@ -1,5 +1,8 @@
 use std::fmt::{Debug, Formatter, Result as FmtResult};
 
+pub const CARD_WIDTH: u32 = 725;
+pub const CARD_HEIGHT: u32 = 1040;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Point<T> {
     pub x: T,
