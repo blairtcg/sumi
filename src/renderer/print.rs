@@ -27,6 +27,7 @@ struct Letter {
 struct LetterSet {
     hash: Letter,
     digits: [Letter; 10],
+    ref_width: i32,
 }
 
 static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
@@ -74,14 +75,24 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
         }
     };
 
+    let hash = render_char('#');
+    let digits = array::from_fn(|i| render_char((b'0' + i as u8) as char));
+    let ref_width = i32::from(hash.advance_width) + i32::from(digits[0].advance_width) * 2;
+
     LetterSet {
-        hash: render_char('#'),
-        digits: array::from_fn(|i| render_char((b'0' + i as u8) as char)),
+        hash,
+        digits,
+        ref_width,
     }
 });
 
 pub(super) fn init_font() {
     LazyLock::force(&LETTERS);
+}
+
+#[inline]
+pub(super) fn ref_number_width() -> i32 {
+    LETTERS.ref_width
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
