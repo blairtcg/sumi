@@ -32,16 +32,31 @@ pub async fn handle_render_drop(
     State(renderer): State<Arc<CardRenderer>>,
     Query(request): Query<RenderRequest>,
 ) -> Result<impl IntoResponse> {
-    let start = Instant::now();
+    let left = request.left.trim();
+    let right = request.right.trim();
+
+    if left.is_empty() {
+        return Err(Error::BadRequest("left card name cannot be empty".to_string()));
+    }
+    if right.is_empty() {
+        return Err(Error::BadRequest("right card name cannot be empty".to_string()));
+    }
+
     let left_print = PrintNumber::new(request.left_print.unwrap_or(1));
     let right_print = PrintNumber::new(request.right_print.unwrap_or(1));
 
+    let start = Instant::now();
+
     let image_data =
-        match renderer.render_drop(&request.left, &request.right, left_print, right_print).await {
+        match renderer.render_drop(left, right, left_print, right_print).await {
             Ok(data) => data,
             Err(err) => {
                 renderer.stats.record_failure();
-                return Err(Error::Render { err, left: request.left, right: request.right });
+                return Err(Error::Render {
+                    err,
+                    left: left.to_string(),
+                    right: right.to_string(),
+                });
             }
         };
 
