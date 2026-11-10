@@ -75,9 +75,6 @@ async fn main() {
     };
     let state = Arc::new(renderer);
 
-    // ! card cache prewarm is now disabled
-    // state.card_cache.start_prewarm();
-
     let app = Router::new()
         .route("/health", get(|| async { "OK" }))
         .route("/metrics", get(handle_metrics))
