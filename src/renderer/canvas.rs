@@ -56,6 +56,8 @@ impl BufferGuard {
         if buffer.len() != required_len {
             buffer.clear();
             buffer.resize(required_len, 0);
+        } else {
+            buffer.fill(0);
         }
         Self { buffer }
     }
