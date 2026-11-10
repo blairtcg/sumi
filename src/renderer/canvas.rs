@@ -9,7 +9,7 @@ use super::{
     encoder::encode_webp,
     error::Result,
     pixels::{Point, RawCardImage},
-    print::{TEXT_SIZE, draw_print_number, measure_print_number},
+    print::{TEXT_SIZE, draw_print_number, measure_print_number, ref_number_width},
 };
 
 const TEXT_PADDING_FROM_EDGE: i32 = 190;
@@ -132,8 +132,7 @@ pub(super) fn create_drop_image(
     let left_print_width = measure_print_number(left_print);
     let right_print_width = measure_print_number(right_print);
 
-    let ref_width = measure_print_number(b"#00");
-    let right_padding = TEXT_PADDING_FROM_EDGE - ref_width;
+    let right_padding = TEXT_PADDING_FROM_EDGE - ref_number_width();
 
     let left_print_x = (left_card_x + left_width).cast_signed() - right_padding - left_print_width;
     let right_print_x =
