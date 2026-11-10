@@ -16,19 +16,58 @@ const TEXT_PADDING_FROM_EDGE: i32 = 190;
 const PADDING_BETWEEN_CARDS: u32 = 20;
 const TEXT_PADDING_FROM_BOTTOM: i32 = 80;
 
+// copies both cards into the canvas in a single go.
+// since we write both cards to the destination row while it is cached in the CPU -
+// it'll avoid sweeping through the big boy buffer twice and will mitigate cache misses.
 #[inline]
-fn copy_card_pixels(buffer: &mut [u8], card: &RawCardImage, total_width: u32, pos: Point<u32>) {
-    let card_row_bytes = (card.size.width * 4) as usize;
+fn copy_the_cards(
+    buffer: &mut [u8],
+    left_card: &RawCardImage,
+    right_card: &RawCardImage,
+    total_width: u32,
+    left_x: u32,
+    right_x: u32,
+    card_y: u32,
+) {
+    let left_row_bytes = (left_card.size.width * 4) as usize;
+    let right_row_bytes = (right_card.size.width * 4) as usize;
     let total_row_bytes = (total_width * 4) as usize;
 
-    let dest_rows = buffer.chunks_exact_mut(total_row_bytes);
-    let src_rows = card.pixels.chunks_exact(card_row_bytes);
+    let left_x_offset = (left_x * 4) as usize;
+    let right_x_offset = (right_x * 4) as usize;
 
-    for (dest_row, src_row) in
-        dest_rows.skip(pos.y as usize).zip(src_rows).take(card.size.height as usize)
-    {
-        let x_offset = (pos.x * 4) as usize;
-        dest_row[x_offset..x_offset + card_row_bytes].copy_from_slice(src_row);
+    let common_height = (left_card.size.height.min(right_card.size.height)) as usize;
+    let mut dest_offset = (card_y as usize) * total_row_bytes;
+    let mut left_src = 0;
+    let mut right_src = 0;
+
+    for _ in 0..common_height {
+        buffer[dest_offset + left_x_offset..dest_offset + left_x_offset + left_row_bytes]
+            .copy_from_slice(&left_card.pixels[left_src..left_src + left_row_bytes]);
+        buffer[dest_offset + right_x_offset..dest_offset + right_x_offset + right_row_bytes]
+            .copy_from_slice(&right_card.pixels[right_src..right_src + right_row_bytes]);
+
+        dest_offset += total_row_bytes;
+        left_src += left_row_bytes;
+        right_src += right_row_bytes;
+    }
+
+    if left_card.size.height > right_card.size.height {
+        let extra = (left_card.size.height - right_card.size.height) as usize;
+        for _ in 0..extra {
+            buffer[dest_offset + left_x_offset..dest_offset + left_x_offset + left_row_bytes]
+                .copy_from_slice(&left_card.pixels[left_src..left_src + left_row_bytes]);
+            dest_offset += total_row_bytes;
+            left_src += left_row_bytes;
+        }
+    } else if right_card.size.height > left_card.size.height {
+        let extra = (right_card.size.height - left_card.size.height) as usize;
+        for _ in 0..extra {
+            buffer[dest_offset + right_x_offset..dest_offset + right_x_offset + right_row_bytes]
+                .copy_from_slice(&right_card.pixels[right_src..right_src + right_row_bytes]);
+            dest_offset += total_row_bytes;
+            right_src += right_row_bytes;
+        }
     }
 }
 
@@ -115,9 +154,16 @@ pub(super) fn create_drop_image(
     let right_card_x = left_width + PADDING_BETWEEN_CARDS * 2;
     let card_y = PADDING_BETWEEN_CARDS;
 
-    // copy pixels from left and right card into buffer.
-    copy_card_pixels(&mut buffer, left_card, total_width, Point::new(left_card_x, card_y));
-    copy_card_pixels(&mut buffer, right_card, total_width, Point::new(right_card_x, card_y));
+    // copy pixels from left and right card into buffer in a single pass.
+    copy_the_cards(
+        &mut buffer,
+        left_card,
+        right_card,
+        total_width,
+        left_card_x,
+        right_card_x,
+        card_y,
+    );
 
     let mut left_print_buf = [0u8; 8];
     let left_print = format_print_number(left_card_print.value(), &mut left_print_buf);
