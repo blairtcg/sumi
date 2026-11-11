@@ -29,24 +29,35 @@ use crate::metrics::Metrics;
 
 const TIMEOUT_SECONDS: u64 = 10;
 
-// this is guaranteed to format into at most 4 bytes (#, plus 1-3 digits)
+/*
+=============
+PrintNumber
+
+The card print number between #1 and #999.
+=============
+*/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PrintNumber(u16);
 
 impl PrintNumber {
-    /// creates a new print number, clamping to the 1-999 range.
     #[inline]
     pub fn new(val: u32) -> Self {
         Self(val.clamp(1, 999) as u16)
     }
 
-    /// returns the raw u16 value of the print number.
     #[inline]
     pub const fn value(self) -> u16 {
         self.0
     }
 }
 
+/*
+=============
+CardRenderer
+
+Handles card image renders using dedicated CPU thread pool.
+=============
+*/
 #[derive(Debug)]
 pub struct CardRenderer {
     pub card_cache: CardCache,
@@ -57,6 +68,11 @@ pub struct CardRenderer {
 }
 
 impl CardRenderer {
+    /*
+    =============
+    new
+    =============
+    */
     pub fn new(cards_directory: impl AsRef<Path>) -> Result<Self> {
         let cores = thread::available_parallelism().map_or(4, NonZero::get);
         tracing::info!("sumi woke up with [{cores} cpu cores]");
@@ -71,7 +87,11 @@ impl CardRenderer {
         })
     }
 
-    // wait for all background workers to finish
+    /*
+    =============
+    wait_for_tasks_to_finish
+    =============
+    */
     pub async fn wait_for_tasks_to_finish(&self) {
         let active_tasks =
             self.total_permits.saturating_sub(self.cpu_semaphore.available_permits());
@@ -82,9 +102,11 @@ impl CardRenderer {
         tracing::info!("all active tasks finished!");
     }
 
-    // creates the final image.
-    // if we cant render your drop in 10 seconds (Shutty timeout ngl), Too bad!
-    // in blair-go side your cooldown wont get used. users can just try dropping again.
+    /*
+    =============
+    render_drop
+    =============
+    */
     #[tracing::instrument(skip(self), err)]
     #[allow(clippy::significant_drop_tightening)]
     pub async fn render_drop(
@@ -95,7 +117,8 @@ impl CardRenderer {
         right_print_number: PrintNumber,
     ) -> Result<Bytes> {
         let deadline = TokioInstant::now() + Duration::from_secs(TIMEOUT_SECONDS);
-
+        
+        // this makes sure we dont handle too many heavy tasks at the exact same time.
         let permit = timeout_at(deadline, self.cpu_semaphore.clone().acquire_owned())
             .await
             .map_err(|_| RenderError::Timeout)?
