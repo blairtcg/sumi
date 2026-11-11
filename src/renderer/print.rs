@@ -79,11 +79,7 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
     let digits = array::from_fn(|i| render_char((b'0' + i as u8) as char));
     let ref_width = i32::from(hash.advance_width) + i32::from(digits[0].advance_width) * 2;
 
-    LetterSet {
-        hash,
-        digits,
-        ref_width,
-    }
+    LetterSet { hash, digits, ref_width }
 });
 
 pub(super) fn init_font() {

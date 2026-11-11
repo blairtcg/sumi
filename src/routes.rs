@@ -47,18 +47,13 @@ pub async fn handle_render_drop(
 
     let start = Instant::now();
 
-    let image_data =
-        match renderer.render_drop(left, right, left_print, right_print).await {
-            Ok(data) => data,
-            Err(err) => {
-                renderer.stats.record_failure();
-                return Err(Error::Render {
-                    err,
-                    left: left.to_string(),
-                    right: right.to_string(),
-                });
-            }
-        };
+    let image_data = match renderer.render_drop(left, right, left_print, right_print).await {
+        Ok(data) => data,
+        Err(err) => {
+            renderer.stats.record_failure();
+            return Err(Error::Render { err, left: left.to_string(), right: right.to_string() });
+        }
+    };
 
     let elapsed = start.elapsed();
     let bytes_sent = image_data.len();
