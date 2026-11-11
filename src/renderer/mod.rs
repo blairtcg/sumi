@@ -117,7 +117,7 @@ impl CardRenderer {
         right_print_number: PrintNumber,
     ) -> Result<Bytes> {
         let deadline = TokioInstant::now() + Duration::from_secs(TIMEOUT_SECONDS);
-        
+
         // this makes sure we dont handle too many heavy tasks at the exact same time.
         let permit = timeout_at(deadline, self.cpu_semaphore.clone().acquire_owned())
             .await

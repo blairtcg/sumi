@@ -47,7 +47,7 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
 
         for &cov in &coverage {
             white_pass.push(GlyphPixel { fg_rgb: cov, fg_a: cov, inv_a: 255 - cov });
-            
+
             // make the shadow lighter (90/255) for the ambient pass.
             let ambient_a = ((u32::from(cov) * 90) / 255) as u8;
             ambient_shadow_pass.push(GlyphPixel {
@@ -202,7 +202,7 @@ fn draw_pass(
 
         for draw_y_offset in draw_y_start..draw_y_end {
             let canvas_y = draw_y + draw_y_offset;
-    
+
             // calculate the exact memory address for the pixel row.
             let canvas_row_idx = canvas_y as usize;
             let canvas_col_idx = (pos.x + i32::from(letter.offset_x) + draw_x_start) as usize;
