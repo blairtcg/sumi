@@ -34,7 +34,7 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
     let font_data = include_bytes!("../../assets/LexendDeca-Bold.ttf") as &[u8];
     let font =
         Font::from_bytes(font_data, FontSettings::default()).expect("could not load font file");
-    // safe to unwrap because font is built in and won't change during runtime
+    // safe to unwrap because font is built in and won't change during runtime.
     let metrics = font.horizontal_line_metrics(TEXT_SIZE).expect("font should have line metrics");
     let ascent = metrics.ascent;
 
@@ -47,7 +47,8 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
 
         for &cov in &coverage {
             white_pass.push(GlyphPixel { fg_rgb: cov, fg_a: cov, inv_a: 255 - cov });
-
+            
+            // make the shadow lighter (90/255) for the ambient pass.
             let ambient_a = ((u32::from(cov) * 90) / 255) as u8;
             ambient_shadow_pass.push(GlyphPixel {
                 fg_rgb: 0,
@@ -55,6 +56,7 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
                 inv_a: 255 - ambient_a,
             });
 
+            // make the shadow darker (190/255) for the contact pass.
             let contact_a = ((u32::from(cov) * 190) / 255) as u8;
             contact_shadow_pass.push(GlyphPixel {
                 fg_rgb: 0,
@@ -77,15 +79,26 @@ static LETTERS: LazyLock<LetterSet> = LazyLock::new(|| {
 
     let hash = render_char('#');
     let digits = array::from_fn(|i| render_char((b'0' + i as u8) as char));
+    // calculate the width of "#00" to use as a reference for spacing.
     let ref_width = i32::from(hash.advance_width) + i32::from(digits[0].advance_width) * 2;
 
     LetterSet { hash, digits, ref_width }
 });
 
+/*
+=============
+init_font
+=============
+*/
 pub(super) fn init_font() {
     LazyLock::force(&LETTERS);
 }
 
+/*
+=============
+ref_number_width
+=============
+*/
 #[inline]
 pub(super) fn ref_number_width() -> i32 {
     LETTERS.ref_width
@@ -98,11 +111,11 @@ enum PassKind {
     Foreground,
 }
 
-// !!! all as usize casts are safe from sign loss !!!
-// canvas_w and letter_w come from unsigned integers
-// canvas_row_idx is verified positive by the bounds check
-// letter_row_idx and letter_col_idx are positive offsets bounded by zero
-// this is same for draw_pass func
+/*
+=============
+draw_print_number
+=============
+*/
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
 pub(super) fn draw_print_number(
     canvas_width: u32,
@@ -111,6 +124,7 @@ pub(super) fn draw_print_number(
     print_number: &[u8],
     pos: Point<i32>,
 ) {
+    // draw the shadows first so they appear underneath the white text.
     draw_pass(
         canvas_width,
         canvas_height,
@@ -132,6 +146,11 @@ pub(super) fn draw_print_number(
     draw_pass(canvas_width, canvas_height, canvas_buf, print_number, pos, PassKind::Foreground);
 }
 
+/*
+=============
+draw_pass
+=============
+*/
 #[allow(clippy::many_single_char_names, clippy::cast_sign_loss, clippy::similar_names)]
 fn draw_pass(
     canvas_width: u32,
@@ -158,6 +177,7 @@ fn draw_pass(
 
         let draw_y = pos.y + i32::from(letter.offset_y);
 
+        // clip the drawing area if it goes outside the canvas boundaries.
         let draw_y_start = 0.max(-draw_y);
         let draw_y_end = letter_height.min(canvas_height - draw_y);
 
@@ -182,7 +202,8 @@ fn draw_pass(
 
         for draw_y_offset in draw_y_start..draw_y_end {
             let canvas_y = draw_y + draw_y_offset;
-
+    
+            // calculate the exact memory address for the pixel row.
             let canvas_row_idx = canvas_y as usize;
             let canvas_col_idx = (pos.x + i32::from(letter.offset_x) + draw_x_start) as usize;
             let canvas_pixel_start = (canvas_row_idx * canvas_w + canvas_col_idx) * 4;
@@ -200,10 +221,12 @@ fn draw_pass(
             let letter_row = &glyph_pass[letter_pixel_start..letter_pixel_end];
 
             for (pixel, glyph) in target_pixels.chunks_exact_mut(4).zip(letter_row.iter()) {
+                // skip fully transparent pixels to save time.
                 if glyph.fg_a == 0 {
                     continue;
                 }
 
+                // if the pixel is fully opaque white, we just copy it directly.
                 if pass_kind == PassKind::Foreground && glyph.fg_a == 255 {
                     pixel.copy_from_slice(&[255, 255, 255, 255]);
                     continue;
@@ -213,6 +236,7 @@ fn draw_pass(
                     let inv_a = u32::from(glyph.inv_a);
                     let fg_a = u32::from(glyph.fg_a);
 
+                    // blend the shadow color with the background.
                     let scale = |bg: u8| -> u8 {
                         let t = u32::from(bg) * inv_a + 128;
                         ((t + (t >> 8)) >> 8) as u8
@@ -230,6 +254,7 @@ fn draw_pass(
                 let fg_a = u32::from(glyph.fg_a);
                 let inv_a = u32::from(glyph.inv_a);
 
+                // result = background * (1 - alpha) + foreground * alpha
                 let blend = |bg: u8, fg: u32, inv: u32| -> u8 {
                     let t = u32::from(bg) * inv + 128;
                     (fg + ((t + (t >> 8)) >> 8)) as u8
@@ -246,7 +271,13 @@ fn draw_pass(
     }
 }
 
-// measures how many padding needed for our print numbers
+/*
+=============
+measure_print_number
+
+measures how many padding is needed for the card's print numbers.
+=============
+*/
 #[inline]
 pub(super) fn measure_print_number(print_number: &[u8]) -> i32 {
     print_number
