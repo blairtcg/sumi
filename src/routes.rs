@@ -15,8 +15,6 @@ use crate::{
     renderer::{CardRenderer, PrintNumber},
 };
 
-// the data we expect when blair asks for an image.
-// we need character name from its filename and also print nums
 #[derive(Debug, Deserialize)]
 pub struct RenderRequest {
     pub left: String,
@@ -25,8 +23,11 @@ pub struct RenderRequest {
     pub right_print: Option<u32>,
 }
 
-// takes the left and right card details and then ask sumi to combine them,
-// and returns the drop image back to blair to the player @ discord.
+/*
+=============
+handle_render_drop
+=============
+*/
 #[tracing::instrument(skip(renderer), fields(left = %request.left, right = %request.right, left_print = request.left_print.unwrap_or(1), right_print = request.right_print.unwrap_or(1)))]
 pub async fn handle_render_drop(
     State(renderer): State<Arc<CardRenderer>>,
@@ -65,11 +66,14 @@ pub async fn handle_render_drop(
     Ok((StatusCode::OK, [(header::CONTENT_TYPE, "image/webp")], image_data).into_response())
 }
 
-// an endpoint for sumi stats and whether sumi died or not
+/*
+=============
+handle_metrics
+=============
+*/
 #[allow(clippy::unused_async)]
 pub async fn handle_metrics(State(renderer): State<Arc<CardRenderer>>) -> impl IntoResponse {
     let uptime = renderer.start_time.elapsed().as_secs();
-
     let successful = renderer.stats.successful_renders();
     let failed = renderer.stats.failed_renders();
     let total_bytes = renderer.stats.total_image_bytes();
