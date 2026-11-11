@@ -8,14 +8,19 @@ pub struct Config {
 }
 
 impl Config {
+    /*
+    =============
+    from_env
+    =============
+    */
     pub fn from_env() -> Result<Self, String> {
-        // read from env so its easier to setup to docker etc.
-        // you can pass CARDS_DIR env before running
-        // for now we will use our default path and default port 8888
+        // try to find the user home directory to set a default path.
+        // check "USERPROFILE" for windows and "HOME" for macOS/linux.
         let home = env::var_os("USERPROFILE").or_else(|| env::var_os("HOME"));
+        
         let default_cards_dir = home.map(PathBuf::from).map_or_else(
             || PathBuf::from("assets/cards"),
-            |p| p.join("Documents").join("kizunari").join("cards"),
+            |p| p.join("Documents").join("kizunari").join("cards"), // seth's
         );
 
         let cards_dir = env::var("CARDS_DIR").map_or_else(|_| default_cards_dir, PathBuf::from);
@@ -40,7 +45,16 @@ impl Config {
 }
 
 impl Default for Config {
+    /*
+    =============
+    default
+    =============
+    */
     fn default() -> Self {
-        Self { cards_dir: PathBuf::from("assets/cards"), port: 8888, host: "0.0.0.0".to_string() }
+        Self {
+            cards_dir: PathBuf::from("assets/cards"),
+            port: 8888,
+            host: "0.0.0.0".to_string(),
+        }
     }
 }
