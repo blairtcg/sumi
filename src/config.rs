@@ -8,11 +8,6 @@ pub struct Config {
 }
 
 impl Config {
-    /*
-    =============
-    from_env
-    =============
-    */
     pub fn from_env() -> Result<Self, String> {
         // try to find the user home directory to set a default path.
         // check "USERPROFILE" for windows and "HOME" for macOS/linux.
@@ -44,12 +39,7 @@ impl Config {
     }
 }
 
-impl Default for Config {
-    /*
-    =============
-    default
-    =============
-    */
+impl Default for Config 
     fn default() -> Self {
         Self {
             cards_dir: PathBuf::from("assets/cards"),
