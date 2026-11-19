@@ -8,7 +8,7 @@
   ahash              = "0.8.12"
   axum               = { version = "0.8.9", features = ["http1", "json", "query", "tokio"], default-features = false }
   butteraugli        = { version = "0.9.3", optional = true }
-  bytes              = { version = "1.12.1", default-features = false }
+  bytes              = { version = "1.12.2", default-features = false }
   crossbeam-queue    = { version = "0.3.14", features = ["alloc"], default-features = false }
   fast-ssim2         = { version = "0.9.1", optional = true }
   fontdue            = { version = "0.9.5", default-features = false }
