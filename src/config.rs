@@ -39,7 +39,7 @@ impl Config {
     }
 }
 
-impl Default for Config 
+impl Default for Config {
     fn default() -> Self {
         Self {
             cards_dir: PathBuf::from("assets/cards"),
@@ -47,3 +47,4 @@ impl Default for Config
             host: "0.0.0.0".to_string(),
         }
     }
+}
