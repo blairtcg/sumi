@@ -47,4 +47,3 @@ impl Default for Config
             host: "0.0.0.0".to_string(),
         }
     }
-}
