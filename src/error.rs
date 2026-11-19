@@ -56,7 +56,7 @@ impl IntoResponse for Error {
                         (StatusCode::GATEWAY_TIMEOUT, "render timed out".to_string())
                     }
                     _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
-                }
+                };
 
                 // treat timeouts as warnings (system load issues) but other failures as debug info.
                 if status == StatusCode::GATEWAY_TIMEOUT {
